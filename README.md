@@ -1,114 +1,66 @@
 # Depths of Ruin ⚔️
 
-A turn-based roguelike dungeon crawler built with Godot 4.6.
+A turn-based roguelike dungeon crawler built with Godot 4.6. Infinite procedurally generated floors, permadeath, and pure `_draw()` rendering (no sprites).
 
-**🎮 [Play Now](https://riven-aigent.github.io/roguelike-dungeon)**
+**Play now:** [https://riven-aigent.github.io/roguelike-dungeon/](https://riven-aigent.github.io/roguelike-dungeon/)
 
 ## Features
 
-- **Procedural Dungeons** — BSP-based room and corridor generation. Every floor is different.
-- **Turn-Based Movement** — Grid-based movement. Each step is a turn.
-- **Infinite Descent** — Find the stairs and go deeper. Floor counter tracks your progress.
-- **Enemies & Combat** — Bump-to-attack combat with 4 enemy types that scale by floor.
-- **Enemy AI** — Enemies chase you within 5 tiles, otherwise wander randomly.
-- **Player Stats** — HP, ATK, DEF. Survive as long as you can.
-- **Items & Loot** — Health Potions, Strength Potions, Shield Scrolls, and Gold scattered across each floor.
-- **Fog of War** — Tiles start hidden. Explore to reveal a 6-tile radius around you. Previously seen areas stay dimmed.
-- **Score System** — Earn points from kills, gold, and floor depth. Final score shown on death.
-- **Minimap** — 120x120 pixel minimap showing explored areas, stairs, and your position.
-- **Game Over & Restart** — Die and see your final score. Tap to try again.
-- **Mobile-First** — 480x800 portrait viewport. Swipe to move on touch devices.
-- **Pure Rendering** — No sprites needed. Everything drawn with `_draw()` calls.
+### Core
+- BSP-based procedural dungeon generation
+- Grid-based movement (WASD + arrow keys + touch/swipe)
+- Infinite floor descent via stairs
+- Fog of war with 6-tile vision radius
+- Minimap with enemy tracking
+- Scrolling message log (last 5 messages with fade)
+
+### Combat & Progression
+- Turn-based bump combat with ATK/DEF stats
+- **XP & Leveling system**: Earn XP from kills, level up for +5 HP (full heal) and +1 ATK
+- Score tracking (kills, gold, floor depth)
+- Permadeath with full stats on game over
+
+### Enemies (7 Regular + 3 Bosses)
+
+| Enemy | Stats | Floor | Special |
+|-------|-------|-------|---------|
+| Slime | 3HP/1ATK/0DEF | 1+ | Basic |
+| Bat | 2HP/2ATK/0DEF | 1+ | Fast but fragile |
+| Skeleton | 5HP/2ATK/1DEF | 3+ | Armored |
+| Wraith | 4HP/3ATK/0DEF | 4+ | Phases through walls |
+| Orc | 8HP/3ATK/2DEF | 5+ | Tough |
+| Fire Imp | 3HP/4ATK/0DEF | 6+ | Ranged fireball (2-3 tiles) |
+| Golem | 15HP/2ATK/4DEF | 8+ | Slow (moves every other turn) |
+
+### Boss Floors (Every 5th Floor)
+
+| Boss | Stats | Special |
+|------|-------|---------|
+| Giant Slime (F5) | 25HP/4ATK/2DEF | Splits into 2 Slimes at 50% HP |
+| Lich (F10) | 30HP/5ATK/3DEF | Summons a Skeleton every 3 turns |
+| Shadow Dragon (F15+) | 50HP/6ATK/4DEF | 2 actions per turn |
+
+Boss floors are single-room arenas. Defeat the boss to reveal stairs and claim a guaranteed Strength Potion.
+
+### Items
+- **Health Potion** (red cross): Restores 8 HP
+- **Strength Potion** (orange arrow): +1 ATK permanently
+- **Shield Scroll** (blue square): +1 DEF permanently
+- **Gold** (yellow dot): +10 score
 
 ## Controls
-
-| Input | Action |
-|-------|--------|
-| WASD / Arrow Keys | Move |
-| Swipe (touch) | Move |
-| Walk into enemy | Attack |
-| Walk over item | Auto-collect |
-| Step on cyan tile | Descend to next floor |
-| Any key/tap on Game Over | Restart |
-
-## Items
-
-| Item | Symbol | Color | Effect |
-|------|--------|-------|--------|
-| Health Potion | Red Cross | Red | Heals 8 HP (capped at max) |
-| Strength Potion | Up Arrow | Orange | +1 ATK permanently |
-| Shield Scroll | Square | Blue | +1 DEF permanently |
-| Gold | Dot | Yellow | +10 score |
-
-2-4 items spawn per floor on random floor tiles.
-
-## Enemies
-
-| Enemy | Shape | Color | HP | ATK | DEF | Floors |
-|-------|-------|-------|----|-----|-----|--------|
-| Slime | Circle | Yellow-Green | 3 | 1 | 0 | 1-3 |
-| Bat | Diamond | Purple | 2 | 2 | 0 | 1-5 |
-| Skeleton | Square | White | 5 | 2 | 1 | 3+ |
-| Orc | Large Circle | Dark Red | 8 | 3 | 2 | 5+ |
-
-## Fog of War
-
-- All tiles start hidden (black)
-- Moving reveals tiles within a 6-tile Euclidean radius
-- Previously explored tiles appear dimmed (45% brightness)
-- Enemies and items are only visible within the light radius
-- Stairs remain visible once discovered, even in fog
-- Each new floor starts with fresh fog
-
-## Score
-
-Score = (Kills x 10) + Gold Collected + (Floor x 5)
-
-Shown live in the HUD and as final score on death.
-
-## Color Key
-
-| Color | Meaning |
-|-------|---------|
-| 🟤 Dark Brown | Wall |
-| ⬛ Dark Gray | Floor |
-| 🟦 Cyan | Stairs Down |
-| 🟢 Green Circle | You (flashes red when hit) |
-| 🔴 Red Cross | Health Potion |
-| 🟠 Orange Arrow | Strength Potion |
-| 🔵 Blue Square | Shield Scroll |
-| 🟡 Yellow Dot | Gold |
-
-## Combat
-
-- **Bump-to-attack**: Walk into an enemy to deal damage
-- **Damage formula**: max(1, ATK - target DEF)
-- **Enemy turns**: After you move, all enemies take a turn
-- **Chase AI**: Enemies within 5 tiles (Manhattan distance) chase you
-- **Death**: Reach 0 HP and it's game over
+- **WASD / Arrow Keys**: Move & attack
+- **Swipe**: Touch movement (mobile)
+- **Any key/tap**: Restart after game over
 
 ## Tech
-
 - Godot 4.6 (GDScript)
-- BSP dungeon generation
-- Pure `_draw()` rendering (no TileMap, no sprites)
-- GitHub Actions CI/CD for HTML5 export
-- Progressive Web App enabled
+- Pure `_draw()` rendering, zero sprites
+- Automated CI/CD via GitHub Actions (Godot HTML5 export)
+- Mobile-first (480x800 viewport)
 
-## Roadmap
-
-- [x] Procedural dungeon generation
-- [x] Turn-based movement
-- [x] Enemies with basic AI
-- [x] Combat system (bump-to-attack)
-- [x] Items and inventory (potions, scrolls, gold)
-- [x] Fog of war (6-tile reveal radius)
-- [x] Score system
-- [x] Minimap
-- [ ] Sound effects
-- [ ] More tile types and room features
-- [ ] Equipment system
-
----
-
-Built by [Riven ⚡](https://github.com/riven-aigent)
+## Development Phases
+1. ✅ Dungeon generation, movement, stairs
+2. ✅ Enemies (4 types), bump combat, AI
+3. ✅ Items, fog of war, score, minimap
+4. ✅ XP/leveling, 3 new enemies, boss floors, message log

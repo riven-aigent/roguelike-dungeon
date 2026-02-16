@@ -9,8 +9,10 @@ var generator: DungeonGenerator
 var player_pos: Vector2i
 var current_floor: int = 1
 var camera_offset: Vector2 = Vector2.ZERO
-var message: String = ""
-var message_timer: float = 0.0
+
+# Message log (replaces single message)
+var message_log: Array = []  # Array of {text: String, age: float}
+const MAX_LOG_MESSAGES := 5
 
 # Player stats
 var player_hp: int = 20
@@ -18,6 +20,11 @@ var player_max_hp: int = 20
 var player_atk: int = 3
 var player_def: int = 1
 var kill_count: int = 0
+
+# XP & Leveling
+var player_xp: int = 0
+var player_level: int = 1
+var levelup_flash_timer: float = 0.0
 
 # Enemies
 var enemies: Array = []  # Array of Enemy
@@ -30,18 +37,26 @@ var gold_collected: int = 0
 var score: int = 0
 
 # Fog of war
-var revealed: Dictionary = {}   # Vector2i -> true (currently visible)
-var explored: Dictionary = {}   # Vector2i -> true (previously seen)
-var stairs_found: Dictionary = {} # Vector2i -> true (stairs discovered)
+var revealed: Dictionary = {}
+var explored: Dictionary = {}
+var stairs_found: Dictionary = {}
 
 # Game state
 var game_over: bool = false
 var damage_flash_timer: float = 0.0
 
+# Boss floor state
+var is_boss_floor: bool = false
+var boss_defeated: bool = false
+var boss_stairs_pos: Vector2i = Vector2i(-1, -1)
+
 # Touch input
 var touch_start: Vector2 = Vector2.ZERO
 var is_touching: bool = false
 const SWIPE_THRESHOLD := 30.0
+
+# Turn counter (for Golem/Lich mechanics)
+var turn_count: int = 0
 
 # Colors
 var color_wall: Color = Color(0.25, 0.15, 0.08)
@@ -51,8 +66,8 @@ var color_player: Color = Color(0.2, 0.9, 0.2)
 var color_bg: Color = Color(0.05, 0.05, 0.07)
 var color_text: Color = Color(0.9, 0.9, 0.8)
 var color_hud_bg: Color = Color(0.0, 0.0, 0.0, 0.7)
-var color_fog: Color = Color(0.0, 0.0, 0.0)  # Unexplored
-var color_dim: float = 0.45  # Multiplier for explored-but-not-visible tiles
+var color_fog: Color = Color(0.0, 0.0, 0.0)
+var color_dim: float = 0.45
 
 # Viewport
 var viewport_w: int = 480
@@ -67,18 +82,58 @@ func _ready() -> void:
 	generator = DungeonGenerator.new()
 	_generate_floor()
 
+func _is_boss_floor_num(floor_num: int) -> bool:
+	return floor_num % 5 == 0
+
+func _get_xp_for_next_level() -> int:
+	# Formula: 30 * level^1.5, rounded
+	return roundi(30.0 * pow(float(player_level), 1.5))
+
+func _check_level_up() -> void:
+	var needed: int = _get_xp_for_next_level()
+	while player_xp >= needed and player_level < 99:
+		player_xp -= needed
+		player_level += 1
+		player_max_hp += 5
+		player_hp = player_max_hp  # Heal to full
+		player_atk += 1
+		levelup_flash_timer = 1.5
+		_add_log_message("LEVEL UP! Now level " + str(player_level) + "!")
+		needed = _get_xp_for_next_level()
+
+func _add_log_message(msg: String) -> void:
+	message_log.push_front({"text": msg, "age": 0.0})
+	if message_log.size() > MAX_LOG_MESSAGES:
+		message_log.resize(MAX_LOG_MESSAGES)
+
 func _generate_floor() -> void:
-	map_data = generator.generate(60, 60)
-	player_pos = map_data.get_random_floor_tile()
-	# Reset fog for new floor
-	revealed.clear()
-	explored.clear()
-	stairs_found.clear()
-	_spawn_enemies()
-	_spawn_items()
-	_update_visibility()
-	_update_camera()
-	_show_message("Floor " + str(current_floor))
+	is_boss_floor = _is_boss_floor_num(current_floor)
+	boss_defeated = false
+	boss_stairs_pos = Vector2i(-1, -1)
+	turn_count = 0
+
+	if is_boss_floor:
+		map_data = generator.generate_boss_floor()
+		player_pos = generator.get_boss_player_start()
+		revealed.clear()
+		explored.clear()
+		stairs_found.clear()
+		_spawn_boss()
+		items.clear()
+		_update_visibility()
+		_update_camera()
+		_add_log_message("=== BOSS FLOOR " + str(current_floor) + " ===")
+	else:
+		map_data = generator.generate(60, 60)
+		player_pos = map_data.get_random_floor_tile()
+		revealed.clear()
+		explored.clear()
+		stairs_found.clear()
+		_spawn_enemies()
+		_spawn_items()
+		_update_visibility()
+		_update_camera()
+		_add_log_message("Floor " + str(current_floor))
 	queue_redraw()
 
 func _get_types_for_floor(floor_num: int) -> Array:
@@ -88,8 +143,15 @@ func _get_types_for_floor(floor_num: int) -> Array:
 		types.append(Enemy.Type.BAT)
 	if floor_num >= 3:
 		types.append(Enemy.Type.SKELETON)
+	if floor_num >= 4:
+		types.append(Enemy.Type.WRAITH)
 	if floor_num >= 5:
 		types.append(Enemy.Type.ORC)
+	if floor_num >= 6:
+		types.append(Enemy.Type.FIRE_IMP)
+	if floor_num >= 8:
+		types.append(Enemy.Type.GOLEM)
+	# Phase out weak enemies
 	if floor_num > 3:
 		types.erase(Enemy.Type.SLIME)
 	if floor_num > 5:
@@ -99,13 +161,15 @@ func _get_types_for_floor(floor_num: int) -> Array:
 func _spawn_enemies() -> void:
 	enemies.clear()
 	var count: int = 3 + (randi() % 4)  # 3-6 enemies
+	# Scale count with floor
+	count += current_floor / 3
+	count = mini(count, 10)
 	var valid_types: Array = _get_types_for_floor(current_floor)
 	if valid_types.is_empty():
 		return
 
 	var occupied: Dictionary = {}
 	occupied[player_pos] = true
-	# Mark stairs as occupied
 	for y in range(map_data.height):
 		for x in range(map_data.width):
 			if map_data.get_tile(x, y) == TileMapData.Tile.STAIRS_DOWN:
@@ -117,11 +181,30 @@ func _spawn_enemies() -> void:
 		var pos: Vector2i = map_data.get_random_floor_tile()
 		if occupied.has(pos):
 			continue
+		# Don't spawn too close to player
+		var dist: int = absi(pos.x - player_pos.x) + absi(pos.y - player_pos.y)
+		if dist < 5:
+			continue
 		var t: int = valid_types[randi() % valid_types.size()]
 		var enemy: Enemy = Enemy.new()
 		enemy.setup(t, pos)
 		enemies.append(enemy)
 		occupied[pos] = true
+
+func _spawn_boss() -> void:
+	enemies.clear()
+	items.clear()
+	var boss_pos: Vector2i = generator.get_boss_room_center()
+	var boss: Enemy = Enemy.new()
+
+	if current_floor <= 5:
+		boss.setup(Enemy.Type.BOSS_SLIME, boss_pos)
+	elif current_floor <= 10:
+		boss.setup(Enemy.Type.BOSS_LICH, boss_pos)
+	else:
+		boss.setup(Enemy.Type.BOSS_DRAGON, boss_pos)
+
+	enemies.append(boss)
 
 func _spawn_items() -> void:
 	items.clear()
@@ -136,8 +219,6 @@ func _spawn_items() -> void:
 			if map_data.get_tile(x, y) == TileMapData.Tile.STAIRS_DOWN:
 				occupied[Vector2i(x, y)] = true
 
-	var item_types: Array = [Item.Type.HEALTH_POTION, Item.Type.STRENGTH_POTION, Item.Type.SHIELD_SCROLL, Item.Type.GOLD]
-	# Weight: health potions and gold more common
 	var weighted: Array = [
 		Item.Type.HEALTH_POTION, Item.Type.HEALTH_POTION,
 		Item.Type.GOLD, Item.Type.GOLD, Item.Type.GOLD,
@@ -170,7 +251,6 @@ func _update_visibility() -> void:
 					var tpos: Vector2i = Vector2i(tx, ty)
 					revealed[tpos] = true
 					explored[tpos] = true
-					# Track stairs discovery
 					if map_data.get_tile(tx, ty) == TileMapData.Tile.STAIRS_DOWN:
 						stairs_found[tpos] = true
 
@@ -180,27 +260,28 @@ func _is_visible(pos: Vector2i) -> bool:
 func _is_explored(pos: Vector2i) -> bool:
 	return explored.has(pos)
 
-func _show_message(msg: String) -> void:
-	message = msg
-	message_timer = 2.5
-
 func _calculate_score() -> int:
 	return kill_count * 10 + gold_collected + current_floor * 5
 
 func _process(delta: float) -> void:
-	if message_timer > 0:
-		message_timer -= delta
-		if message_timer <= 0:
-			message = ""
-		queue_redraw()
+	# Age log messages
+	var needs_redraw: bool = false
+	for i in range(message_log.size()):
+		message_log[i]["age"] += delta
+	if levelup_flash_timer > 0:
+		levelup_flash_timer -= delta
+		if levelup_flash_timer <= 0:
+			levelup_flash_timer = 0.0
+		needs_redraw = true
 	if damage_flash_timer > 0:
 		damage_flash_timer -= delta
 		if damage_flash_timer <= 0:
 			damage_flash_timer = 0.0
+		needs_redraw = true
+	if needs_redraw:
 		queue_redraw()
 
 func _unhandled_input(event: InputEvent) -> void:
-	# Game over: any tap or key restarts
 	if game_over:
 		var restart: bool = false
 		if event is InputEventKey and event.is_pressed():
@@ -262,6 +343,7 @@ func _try_move(dir: Vector2i) -> void:
 	var target_enemy: Enemy = _get_enemy_at(new_pos)
 	if target_enemy != null:
 		_player_attack(target_enemy)
+		turn_count += 1
 		_enemy_turn()
 		_update_visibility()
 		_update_camera()
@@ -281,6 +363,7 @@ func _try_move(dir: Vector2i) -> void:
 		return
 
 	# Enemy turn after player moves
+	turn_count += 1
 	_enemy_turn()
 	_update_visibility()
 	_update_camera()
@@ -297,72 +380,183 @@ func _check_item_pickup() -> void:
 				Item.Type.HEALTH_POTION:
 					var heal: int = mini(8, player_max_hp - player_hp)
 					player_hp += heal
-					_show_message("Picked up Health Potion! +" + str(heal) + " HP")
+					_add_log_message("Picked up Health Potion! +" + str(heal) + " HP")
 				Item.Type.STRENGTH_POTION:
 					player_atk += 1
-					_show_message("Picked up Strength Potion! +1 ATK")
+					_add_log_message("Picked up Strength Potion! +1 ATK")
 				Item.Type.SHIELD_SCROLL:
 					player_def += 1
-					_show_message("Picked up Shield Scroll! +1 DEF")
+					_add_log_message("Picked up Shield Scroll! +1 DEF")
 				Item.Type.GOLD:
 					gold_collected += 10
-					_show_message("Picked up Gold! +10 score")
+					_add_log_message("Picked up Gold! +10 score")
 			score = _calculate_score()
 			return
 
 func _player_attack(enemy: Enemy) -> void:
 	var dmg: int = enemy.take_damage(player_atk)
 	if enemy.alive:
-		_show_message("Hit " + enemy.name_str + " for " + str(dmg) + "!")
+		_add_log_message("Hit " + enemy.name_str + " for " + str(dmg) + "!")
+		# Check Giant Slime split at 50% HP
+		if enemy.type == Enemy.Type.BOSS_SLIME and not enemy.has_split:
+			if enemy.hp <= enemy.max_hp / 2:
+				enemy.has_split = true
+				_boss_slime_split(enemy)
 	else:
-		_show_message("Killed " + enemy.name_str + "! (+" + str(dmg) + ")")
+		_add_log_message("Killed " + enemy.name_str + "! (+" + str(dmg) + " dmg)")
 		kill_count += 1
+		player_xp += enemy.xp_value
+		_add_log_message("+" + str(enemy.xp_value) + " XP")
+		_check_level_up()
 		score = _calculate_score()
+		# Boss defeated: spawn stairs + drop strength potion
+		if enemy.is_boss:
+			_on_boss_defeated()
+
+func _boss_slime_split(boss: Enemy) -> void:
+	_add_log_message("Giant Slime splits into smaller slimes!")
+	# Spawn 2 regular slimes near the boss
+	var offsets: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+	var spawned: int = 0
+	for offset in offsets:
+		if spawned >= 2:
+			break
+		var spos: Vector2i = boss.pos + offset
+		if map_data.is_walkable(spos.x, spos.y) and _get_enemy_at(spos) == null and spos != player_pos:
+			var slime: Enemy = Enemy.new()
+			slime.setup(Enemy.Type.SLIME, spos)
+			enemies.append(slime)
+			spawned += 1
+
+func _on_boss_defeated() -> void:
+	boss_defeated = true
+	_add_log_message("Boss defeated! Stairs appear!")
+	# Place stairs in center of boss room
+	boss_stairs_pos = generator.get_boss_room_center()
+	map_data.set_tile(boss_stairs_pos.x, boss_stairs_pos.y, TileMapData.Tile.STAIRS_DOWN)
+	stairs_found[boss_stairs_pos] = true
+	# Drop guaranteed strength potion near boss center
+	var drop_pos: Vector2i = boss_stairs_pos + Vector2i(1, 0)
+	if map_data.is_walkable(drop_pos.x, drop_pos.y):
+		var potion: Item = Item.new()
+		potion.setup(Item.Type.STRENGTH_POTION, drop_pos)
+		items.append(potion)
 
 func _enemy_turn() -> void:
-	for enemy in enemies:
+	# Process enemies; handle multi-action bosses
+	var enemy_list: Array = enemies.duplicate()
+	for enemy in enemy_list:
 		if not enemy.alive:
 			continue
-		var dist: int = absi(enemy.pos.x - player_pos.x) + absi(enemy.pos.y - player_pos.y)
-		var move_dir: Vector2i = Vector2i.ZERO
+		var actions: int = enemy.actions_per_turn
+		for _a in range(actions):
+			if not enemy.alive:
+				break
+			_process_single_enemy_turn(enemy)
 
-		if dist <= 5:
-			# Move toward player
-			move_dir = _get_chase_dir(enemy.pos, player_pos)
-		else:
-			# Random movement (50% chance to move)
-			if randf() < 0.5:
-				var dirs: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
-				move_dir = dirs[randi() % 4]
+func _process_single_enemy_turn(enemy: Enemy) -> void:
+	# Golem: only moves every other turn
+	if enemy.type == Enemy.Type.GOLEM:
+		enemy.move_cooldown += 1
+		if enemy.move_cooldown % 2 == 1:
+			return  # Skip this turn
 
-		if move_dir == Vector2i.ZERO:
-			continue
+	# Lich: summon skeleton every 3 turns
+	if enemy.type == Enemy.Type.BOSS_LICH:
+		enemy.summon_timer += 1
+		if enemy.summon_timer >= 3:
+			enemy.summon_timer = 0
+			_lich_summon(enemy)
 
-		var new_pos: Vector2i = enemy.pos + move_dir
+	var dist: int = absi(enemy.pos.x - player_pos.x) + absi(enemy.pos.y - player_pos.y)
 
-		# Check if new_pos is the player (bump attack)
-		if new_pos == player_pos:
-			_enemy_attack(enemy)
-			continue
+	# Fire Imp ranged attack: if player is 2-3 tiles away in cardinal direction
+	if enemy.ranged_attack and dist >= 2 and dist <= 3:
+		if _try_ranged_attack(enemy):
+			return
 
-		# Check walkable and no other enemy there
+	var move_dir: Vector2i = Vector2i.ZERO
+
+	if dist <= 5:
+		move_dir = _get_chase_dir(enemy.pos, player_pos, enemy.phase_through_walls)
+	else:
+		if randf() < 0.5:
+			var dirs: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+			move_dir = dirs[randi() % 4]
+
+	if move_dir == Vector2i.ZERO:
+		return
+
+	var new_pos: Vector2i = enemy.pos + move_dir
+
+	# Check if new_pos is the player (bump attack)
+	if new_pos == player_pos:
+		_enemy_attack(enemy)
+		return
+
+	# Wraith can phase through walls
+	if enemy.phase_through_walls:
+		if new_pos.x >= 0 and new_pos.x < map_data.width and new_pos.y >= 0 and new_pos.y < map_data.height:
+			if _get_enemy_at(new_pos) == null:
+				enemy.pos = new_pos
+	else:
 		if map_data.is_walkable(new_pos.x, new_pos.y) and _get_enemy_at(new_pos) == null:
 			enemy.pos = new_pos
+
+func _try_ranged_attack(enemy: Enemy) -> bool:
+	# Check if player is in a cardinal direction, 2-3 tiles away
+	var dx: int = player_pos.x - enemy.pos.x
+	var dy: int = player_pos.y - enemy.pos.y
+	if dx != 0 and dy != 0:
+		return false  # Not cardinal
+	var dist: int = absi(dx) + absi(dy)
+	if dist < 2 or dist > 3:
+		return false
+	# Check line of sight (no walls in between)
+	var step_x: int = signi(dx)
+	var step_y: int = signi(dy)
+	var check_pos: Vector2i = enemy.pos
+	for _i in range(dist - 1):
+		check_pos += Vector2i(step_x, step_y)
+		if not map_data.is_walkable(check_pos.x, check_pos.y):
+			return false
+	# Fire! Deal atk damage
+	var dmg: int = maxi(1, enemy.atk - player_def)
+	player_hp -= dmg
+	damage_flash_timer = 0.2
+	_add_log_message(enemy.name_str + " hurls fire for " + str(dmg) + "!")
+	if player_hp <= 0:
+		player_hp = 0
+		game_over = true
+		score = _calculate_score()
+	return true
+
+func _lich_summon(lich: Enemy) -> void:
+	# Summon a skeleton near the lich
+	var offsets: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
+		Vector2i(1, 1), Vector2i(-1, -1), Vector2i(1, -1), Vector2i(-1, 1)]
+	for offset in offsets:
+		var spos: Vector2i = lich.pos + offset
+		if map_data.is_walkable(spos.x, spos.y) and _get_enemy_at(spos) == null and spos != player_pos:
+			var skel: Enemy = Enemy.new()
+			skel.setup(Enemy.Type.SKELETON, spos)
+			enemies.append(skel)
+			_add_log_message("Lich summons a Skeleton!")
+			return
 
 func _enemy_attack(enemy: Enemy) -> void:
 	var dmg: int = maxi(1, enemy.atk - player_def)
 	player_hp -= dmg
 	damage_flash_timer = 0.2
-	_show_message(enemy.name_str + " hits you for " + str(dmg) + "!")
+	_add_log_message(enemy.name_str + " hits you for " + str(dmg) + "!")
 	if player_hp <= 0:
 		player_hp = 0
 		game_over = true
 		score = _calculate_score()
 
-func _get_chase_dir(from: Vector2i, to: Vector2i) -> Vector2i:
+func _get_chase_dir(from: Vector2i, to: Vector2i, can_phase: bool = false) -> Vector2i:
 	var dx: int = to.x - from.x
 	var dy: int = to.y - from.y
-	# Prefer the axis with greater distance
 	var dir: Vector2i
 	if absi(dx) >= absi(dy):
 		if dx > 0:
@@ -379,10 +573,13 @@ func _get_chase_dir(from: Vector2i, to: Vector2i) -> Vector2i:
 		else:
 			dir = Vector2i.ZERO
 
-	# Check if that direction is walkable
 	var test: Vector2i = from + dir
-	if map_data.is_walkable(test.x, test.y):
-		return dir
+	if can_phase:
+		if test.x >= 0 and test.x < map_data.width and test.y >= 0 and test.y < map_data.height:
+			return dir
+	else:
+		if map_data.is_walkable(test.x, test.y):
+			return dir
 
 	# Try the other axis
 	var alt_dir: Vector2i
@@ -403,8 +600,12 @@ func _get_chase_dir(from: Vector2i, to: Vector2i) -> Vector2i:
 
 	if alt_dir != Vector2i.ZERO:
 		var alt_test: Vector2i = from + alt_dir
-		if map_data.is_walkable(alt_test.x, alt_test.y):
-			return alt_dir
+		if can_phase:
+			if alt_test.x >= 0 and alt_test.x < map_data.width and alt_test.y >= 0 and alt_test.y < map_data.height:
+				return alt_dir
+		else:
+			if map_data.is_walkable(alt_test.x, alt_test.y):
+				return alt_dir
 
 	return Vector2i.ZERO
 
@@ -417,13 +618,21 @@ func _get_enemy_at(pos: Vector2i) -> Enemy:
 func _restart_game() -> void:
 	game_over = false
 	current_floor = 1
-	player_hp = player_max_hp
+	player_hp = 20
+	player_max_hp = 20
 	player_atk = 3
 	player_def = 1
 	kill_count = 0
 	gold_collected = 0
 	score = 0
+	player_xp = 0
+	player_level = 1
+	levelup_flash_timer = 0.0
 	damage_flash_timer = 0.0
+	message_log.clear()
+	is_boss_floor = false
+	boss_defeated = false
+	turn_count = 0
 	_generate_floor()
 
 func _update_camera() -> void:
@@ -435,6 +644,10 @@ func _update_camera() -> void:
 func _draw() -> void:
 	# Background
 	draw_rect(Rect2(0, 0, viewport_w, viewport_h), color_bg)
+
+	# Boss floor red tint on background
+	if is_boss_floor and not boss_defeated:
+		draw_rect(Rect2(0, 0, viewport_w, viewport_h), Color(0.15, 0.0, 0.0, 0.3))
 
 	# Calculate visible tile range
 	var start_x: int = int(-camera_offset.x / float(TILE_SIZE)) - 1
@@ -455,7 +668,6 @@ func _draw() -> void:
 			var was_explored: bool = _is_explored(tpos)
 
 			if not visible and not was_explored:
-				# Completely hidden: draw black
 				continue
 
 			var tile: int = map_data.get_tile(x, y)
@@ -472,7 +684,6 @@ func _draw() -> void:
 			elif tile == TileMapData.Tile.FLOOR:
 				tile_color = color_floor
 			elif tile == TileMapData.Tile.STAIRS_DOWN:
-				# Stairs: always show if discovered, even in fog
 				if stairs_found.has(tpos):
 					tile_color = color_stairs
 				else:
@@ -482,7 +693,6 @@ func _draw() -> void:
 			else:
 				tile_color = color_floor
 
-			# Dim explored-but-not-visible tiles
 			if not visible:
 				tile_color = Color(
 					tile_color.r * color_dim,
@@ -506,13 +716,11 @@ func _draw() -> void:
 
 		match item.type:
 			Item.Type.HEALTH_POTION:
-				# Red cross/plus
 				var s: float = float(TILE_SIZE) * 0.12
 				var l: float = float(TILE_SIZE) * 0.3
 				draw_rect(Rect2(icx - s, icy - l, s * 2.0, l * 2.0), icolor)
 				draw_rect(Rect2(icx - l, icy - s, l * 2.0, s * 2.0), icolor)
 			Item.Type.STRENGTH_POTION:
-				# Orange up-arrow
 				var s: float = float(TILE_SIZE) * 0.25
 				var pts: PackedVector2Array = PackedVector2Array([
 					Vector2(icx, icy - s * 1.2),
@@ -525,12 +733,10 @@ func _draw() -> void:
 				])
 				draw_colored_polygon(pts, icolor)
 			Item.Type.SHIELD_SCROLL:
-				# Blue square with border feel
 				var s: float = float(TILE_SIZE) * 0.28
 				draw_rect(Rect2(icx - s, icy - s, s * 2.0, s * 2.0), icolor)
 				draw_rect(Rect2(icx - s * 0.6, icy - s * 0.6, s * 1.2, s * 1.2), Color(0.15, 0.25, 0.5))
 			Item.Type.GOLD:
-				# Yellow dot
 				draw_circle(Vector2(icx, icy), float(TILE_SIZE) * 0.22, icolor)
 
 	# Draw enemies (only if visible)
@@ -545,7 +751,6 @@ func _draw() -> void:
 		var ecy: float = ey + float(TILE_SIZE) / 2.0
 		var ecolor: Color = enemy.get_color()
 
-		# Only draw if on screen
 		if ecx < -TILE_SIZE or ecx > viewport_w + TILE_SIZE:
 			continue
 		if ecy < -TILE_SIZE or ecy > viewport_h + TILE_SIZE:
@@ -568,21 +773,102 @@ func _draw() -> void:
 				draw_rect(Rect2(ecx - s, ecy - s, s * 2.0, s * 2.0), ecolor)
 			Enemy.Type.ORC:
 				draw_circle(Vector2(ecx, ecy), float(TILE_SIZE) * 0.42, ecolor)
+			Enemy.Type.WRAITH:
+				# Translucent diamond shape
+				var s: float = float(TILE_SIZE) * 0.38
+				var pts: PackedVector2Array = PackedVector2Array([
+					Vector2(ecx, ecy - s),
+					Vector2(ecx + s * 0.7, ecy),
+					Vector2(ecx, ecy + s),
+					Vector2(ecx - s * 0.7, ecy)
+				])
+				draw_colored_polygon(pts, Color(ecolor.r, ecolor.g, ecolor.b, 0.6))
+				# Inner glow
+				draw_circle(Vector2(ecx, ecy), float(TILE_SIZE) * 0.15, Color(0.5, 0.7, 1.0, 0.4))
+			Enemy.Type.FIRE_IMP:
+				# Triangle pointing up (fire shape)
+				var s: float = float(TILE_SIZE) * 0.35
+				var pts: PackedVector2Array = PackedVector2Array([
+					Vector2(ecx, ecy - s),
+					Vector2(ecx + s * 0.8, ecy + s * 0.8),
+					Vector2(ecx - s * 0.8, ecy + s * 0.8)
+				])
+				draw_colored_polygon(pts, ecolor)
+				# Inner flame
+				var s2: float = s * 0.5
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(ecx, ecy - s2),
+					Vector2(ecx + s2 * 0.6, ecy + s2 * 0.6),
+					Vector2(ecx - s2 * 0.6, ecy + s2 * 0.6)
+				]), Color(1.0, 0.8, 0.2))
+			Enemy.Type.GOLEM:
+				# Thick square
+				var s: float = float(TILE_SIZE) * 0.4
+				draw_rect(Rect2(ecx - s, ecy - s, s * 2.0, s * 2.0), ecolor)
+				# Inner cross pattern
+				var cs: float = s * 0.3
+				draw_rect(Rect2(ecx - cs, ecy - s * 0.8, cs * 2.0, s * 1.6), Color(0.3, 0.3, 0.32))
+				draw_rect(Rect2(ecx - s * 0.8, ecy - cs, s * 1.6, cs * 2.0), Color(0.3, 0.3, 0.32))
+			Enemy.Type.BOSS_SLIME:
+				# Large circle with inner circle
+				draw_circle(Vector2(ecx, ecy), float(TILE_SIZE) * 0.48, ecolor)
+				draw_circle(Vector2(ecx, ecy), float(TILE_SIZE) * 0.25, Color(0.2, 0.6, 0.05))
+			Enemy.Type.BOSS_LICH:
+				# Purple diamond with inner detail
+				var s: float = float(TILE_SIZE) * 0.45
+				var pts: PackedVector2Array = PackedVector2Array([
+					Vector2(ecx, ecy - s),
+					Vector2(ecx + s, ecy),
+					Vector2(ecx, ecy + s),
+					Vector2(ecx - s, ecy)
+				])
+				draw_colored_polygon(pts, ecolor)
+				draw_circle(Vector2(ecx, ecy), float(TILE_SIZE) * 0.18, Color(0.9, 0.3, 1.0))
+			Enemy.Type.BOSS_DRAGON:
+				# Large hexagon-ish shape
+				var s: float = float(TILE_SIZE) * 0.48
+				var pts: PackedVector2Array = PackedVector2Array([
+					Vector2(ecx, ecy - s),
+					Vector2(ecx + s * 0.85, ecy - s * 0.4),
+					Vector2(ecx + s * 0.85, ecy + s * 0.4),
+					Vector2(ecx, ecy + s),
+					Vector2(ecx - s * 0.85, ecy + s * 0.4),
+					Vector2(ecx - s * 0.85, ecy - s * 0.4)
+				])
+				draw_colored_polygon(pts, ecolor)
+				# Inner eye
+				draw_circle(Vector2(ecx, ecy), float(TILE_SIZE) * 0.15, Color(1.0, 0.3, 0.0))
 
 		# Enemy HP bar (small bar above enemy)
 		if enemy.hp < enemy.max_hp:
 			var bar_w: float = float(TILE_SIZE - 4)
+			# Boss gets wider bar
+			if enemy.is_boss:
+				bar_w = float(TILE_SIZE) * 1.2
 			var bar_h: float = 3.0
+			if enemy.is_boss:
+				bar_h = 5.0
 			var bar_x: float = ex + 2.0
-			var bar_y: float = ey - 4.0
+			if enemy.is_boss:
+				bar_x = ecx - bar_w / 2.0
+			var bar_y: float = ey - 5.0
+			if enemy.is_boss:
+				bar_y = ey - 8.0
 			var hp_ratio: float = float(enemy.hp) / float(enemy.max_hp)
 			draw_rect(Rect2(bar_x, bar_y, bar_w, bar_h), Color(0.3, 0.0, 0.0))
 			draw_rect(Rect2(bar_x, bar_y, bar_w * hp_ratio, bar_h), Color(0.9, 0.1, 0.1))
+			if enemy.is_boss:
+				# Boss name above HP bar
+				draw_string(ThemeDB.fallback_font, Vector2(bar_x, bar_y - 2.0), enemy.name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(1.0, 0.3, 0.3))
 
 	# Draw player
 	var player_color: Color = color_player
 	if damage_flash_timer > 0:
 		player_color = Color(1.0, 0.2, 0.2)
+	if levelup_flash_timer > 0:
+		# Gold flash on level up
+		var flash_t: float = levelup_flash_timer / 1.5
+		player_color = Color(1.0, 0.85, 0.1).lerp(color_player, 1.0 - flash_t)
 	var player_screen: Vector2 = Vector2(
 		float(player_pos.x * TILE_SIZE) + camera_offset.x + float(TILE_SIZE) / 2.0,
 		float(player_pos.y * TILE_SIZE) + camera_offset.y + float(TILE_SIZE) / 2.0
@@ -590,21 +876,24 @@ func _draw() -> void:
 	draw_circle(player_screen, float(TILE_SIZE) * 0.4, player_color)
 
 	# === HUD ===
-	var hud_h: float = 62.0
+	var hud_h: float = 76.0
 	draw_rect(Rect2(0, 0, viewport_w, hud_h), color_hud_bg)
 
-	# HUD line 1: Floor | Kills | Score
-	var hud_text: String = "Floor: " + str(current_floor) + "  |  Kills: " + str(kill_count) + "  |  Score: " + str(score)
+	# HUD line 1: Floor | Level | Score
+	var floor_label: String = "Floor " + str(current_floor)
+	if is_boss_floor and not boss_defeated:
+		floor_label += " [BOSS]"
+	var hud_text: String = floor_label + "  |  Lv." + str(player_level) + "  |  Score:" + str(score)
 	draw_string(ThemeDB.fallback_font, Vector2(10, 18), hud_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, color_text)
 
 	# HP bar
-	var hp_label: String = "HP: " + str(player_hp) + "/" + str(player_max_hp)
+	var hp_label: String = "HP:" + str(player_hp) + "/" + str(player_max_hp)
 	draw_string(ThemeDB.fallback_font, Vector2(10, 36), hp_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, color_text)
 
 	var bar_start_x: float = 100.0
 	var bar_w: float = float(viewport_w) - bar_start_x - 10.0
-	var bar_h: float = 14.0
-	var bar_y: float = 25.0
+	var bar_h: float = 12.0
+	var bar_y: float = 26.0
 	var hp_ratio: float = float(player_hp) / float(player_max_hp)
 	draw_rect(Rect2(bar_start_x, bar_y, bar_w, bar_h), Color(0.3, 0.0, 0.0))
 	var hp_color: Color
@@ -616,22 +905,42 @@ func _draw() -> void:
 		hp_color = Color(0.9, 0.1, 0.1)
 	draw_rect(Rect2(bar_start_x, bar_y, bar_w * hp_ratio, bar_h), hp_color)
 
-	# ATK/DEF display
-	var stat_text: String = "ATK:" + str(player_atk) + " DEF:" + str(player_def)
-	draw_string(ThemeDB.fallback_font, Vector2(10, 56), stat_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.7, 0.7, 0.6))
+	# XP bar
+	var xp_needed: int = _get_xp_for_next_level()
+	var xp_label: String = "XP:" + str(player_xp) + "/" + str(xp_needed)
+	draw_string(ThemeDB.fallback_font, Vector2(10, 52), xp_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.6, 0.8, 1.0))
 
-	# Gold display next to stats
+	var xp_bar_y: float = 42.0
+	var xp_ratio: float = float(player_xp) / float(maxi(xp_needed, 1))
+	xp_ratio = clampf(xp_ratio, 0.0, 1.0)
+	draw_rect(Rect2(bar_start_x, xp_bar_y, bar_w, 10.0), Color(0.1, 0.1, 0.2))
+	draw_rect(Rect2(bar_start_x, xp_bar_y, bar_w * xp_ratio, 10.0), Color(0.3, 0.5, 1.0))
+
+	# ATK/DEF + Gold + Kills on line 3
+	var stat_text: String = "ATK:" + str(player_atk) + " DEF:" + str(player_def) + "  Kills:" + str(kill_count)
+	draw_string(ThemeDB.fallback_font, Vector2(10, 70), stat_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.7, 0.7, 0.6))
 	var gold_text: String = "Gold:" + str(gold_collected)
-	draw_string(ThemeDB.fallback_font, Vector2(160, 56), gold_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1.0, 0.85, 0.1))
+	draw_string(ThemeDB.fallback_font, Vector2(260, 70), gold_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1.0, 0.85, 0.1))
 
-	# Message
-	if message != "":
-		var msg_y: float = hud_h + 18.0
-		draw_rect(Rect2(0, msg_y - 16.0, viewport_w, 22.0), Color(0.0, 0.0, 0.0, 0.6))
-		draw_string(ThemeDB.fallback_font, Vector2(10, msg_y), message, HORIZONTAL_ALIGNMENT_LEFT, viewport_w - 20, 14, color_stairs)
+	# === MESSAGE LOG ===
+	_draw_message_log(hud_h)
 
 	# === MINIMAP ===
 	_draw_minimap()
+
+	# Level up flash text
+	if levelup_flash_timer > 0:
+		var lu_alpha: float = clampf(levelup_flash_timer / 1.5, 0.0, 1.0)
+		var lu_text: String = "LEVEL UP!"
+		var lu_y: float = float(viewport_h) / 2.0 - 40.0
+		var lu_color: Color = Color(1.0, 0.85, 0.1, lu_alpha)
+		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - 60.0, lu_y), lu_text, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 26, lu_color)
+
+	# Boss floor warning
+	if is_boss_floor and not boss_defeated:
+		var warn_alpha: float = 0.5 + 0.3 * sin(float(turn_count) * 0.5)
+		var warn_color: Color = Color(1.0, 0.2, 0.1, clampf(warn_alpha, 0.3, 0.8))
+		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - 55.0, viewport_h - 20.0), "BOSS FLOOR", HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 18, warn_color)
 
 	# Game over overlay
 	if game_over:
@@ -639,33 +948,56 @@ func _draw() -> void:
 
 		var title: String = "YOU DIED"
 		var title_w: float = float(title.length()) * 14.0
-		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - title_w / 2.0, float(viewport_h) / 2.0 - 60.0), title, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 28, Color(0.9, 0.15, 0.15))
+		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - title_w / 2.0, float(viewport_h) / 2.0 - 80.0), title, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 28, Color(0.9, 0.15, 0.15))
 
 		var score_text: String = "Score: " + str(score)
 		var floor_text: String = "Reached Floor " + str(current_floor)
 		var kills_text: String = "Enemies Slain: " + str(kill_count)
+		var level_text: String = "Level: " + str(player_level)
 		var gold_text2: String = "Gold: " + str(gold_collected)
 		var restart_text: String = "Tap or press any key to restart"
 
-		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - float(score_text.length()) * 6.0, float(viewport_h) / 2.0 - 20.0), score_text, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 22, Color(1.0, 0.85, 0.1))
-		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - float(floor_text.length()) * 5.0, float(viewport_h) / 2.0 + 15.0), floor_text, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 18, color_text)
-		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - float(kills_text.length()) * 5.0, float(viewport_h) / 2.0 + 40.0), kills_text, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 18, color_text)
-		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - float(gold_text2.length()) * 5.0, float(viewport_h) / 2.0 + 65.0), gold_text2, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 18, color_text)
-		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - float(restart_text.length()) * 4.0, float(viewport_h) / 2.0 + 110.0), restart_text, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 14, Color(0.6, 0.6, 0.5))
+		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - float(score_text.length()) * 6.0, float(viewport_h) / 2.0 - 30.0), score_text, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 22, Color(1.0, 0.85, 0.1))
+		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - float(floor_text.length()) * 5.0, float(viewport_h) / 2.0 + 0.0), floor_text, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 18, color_text)
+		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - float(level_text.length()) * 5.0, float(viewport_h) / 2.0 + 25.0), level_text, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 18, Color(0.6, 0.8, 1.0))
+		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - float(kills_text.length()) * 5.0, float(viewport_h) / 2.0 + 50.0), kills_text, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 18, color_text)
+		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - float(gold_text2.length()) * 5.0, float(viewport_h) / 2.0 + 75.0), gold_text2, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 18, color_text)
+		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - float(restart_text.length()) * 4.0, float(viewport_h) / 2.0 + 120.0), restart_text, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 14, Color(0.6, 0.6, 0.5))
+
+func _draw_message_log(hud_h: float) -> void:
+	if message_log.is_empty():
+		return
+	var log_y: float = hud_h + 4.0
+	var line_h: float = 16.0
+	var max_display: int = mini(message_log.size(), MAX_LOG_MESSAGES)
+	# Draw background for log area
+	draw_rect(Rect2(0, log_y, viewport_w, line_h * float(max_display) + 4.0), Color(0.0, 0.0, 0.0, 0.5))
+	for i in range(max_display):
+		var entry: Dictionary = message_log[i]
+		var age: float = entry["age"]
+		var text: String = entry["text"]
+		# Fade from white to gray based on age and position
+		var alpha: float = clampf(1.0 - (age / 8.0) - float(i) * 0.15, 0.2, 1.0)
+		var msg_color: Color = Color(0.9, 0.9, 0.8, alpha)
+		# Level up messages in gold
+		if text.begins_with("LEVEL UP"):
+			msg_color = Color(1.0, 0.85, 0.1, alpha)
+		elif text.begins_with("==="):
+			msg_color = Color(1.0, 0.3, 0.2, alpha)
+		elif text.begins_with("+"):
+			msg_color = Color(0.5, 0.8, 1.0, alpha)
+		var ty: float = log_y + 14.0 + float(i) * line_h
+		draw_string(ThemeDB.fallback_font, Vector2(8, ty), text, HORIZONTAL_ALIGNMENT_LEFT, viewport_w - 16, 12, msg_color)
 
 func _draw_minimap() -> void:
-	# Position: top-right corner below HUD
 	var mm_x: float = float(viewport_w - MINIMAP_SIZE - MINIMAP_MARGIN)
-	var mm_y: float = 66.0  # Below HUD
+	var mm_y: float = 80.0  # Below expanded HUD
 
-	# Background
 	draw_rect(Rect2(mm_x - 2, mm_y - 2, MINIMAP_SIZE + 4, MINIMAP_SIZE + 4), Color(0.3, 0.3, 0.3, 0.8))
 	draw_rect(Rect2(mm_x, mm_y, MINIMAP_SIZE, MINIMAP_SIZE), Color(0.0, 0.0, 0.0, 0.9))
 
-	# Scale: map tiles to minimap pixels
 	minimap_scale = float(MINIMAP_SIZE) / float(maxi(map_data.width, map_data.height))
 
-	# Draw explored tiles
 	for tpos in explored:
 		var tx: int = tpos.x
 		var ty: int = tpos.y
@@ -682,7 +1014,22 @@ func _draw_minimap() -> void:
 			if stairs_found.has(tpos):
 				draw_rect(Rect2(px, py, ps + 1.0, ps + 1.0), Color(0.0, 0.9, 0.9))
 
-	# Player dot (larger, bright green)
+	# Enemy dots on minimap (visible ones, bosses always if on boss floor)
+	for enemy in enemies:
+		if not enemy.alive:
+			continue
+		if _is_visible(enemy.pos) or (is_boss_floor and enemy.is_boss):
+			var epx: float = mm_x + float(enemy.pos.x) * minimap_scale
+			var epy: float = mm_y + float(enemy.pos.y) * minimap_scale
+			var ecolor: Color = Color(1.0, 0.2, 0.2)
+			if enemy.is_boss:
+				ecolor = Color(1.0, 0.0, 0.5)
+			var edot: float = maxf(minimap_scale * 1.2, 2.0)
+			if enemy.is_boss:
+				edot = maxf(minimap_scale * 2.0, 3.5)
+			draw_rect(Rect2(epx - edot * 0.25, epy - edot * 0.25, edot, edot), ecolor)
+
+	# Player dot
 	var pp_x: float = mm_x + float(player_pos.x) * minimap_scale
 	var pp_y: float = mm_y + float(player_pos.y) * minimap_scale
 	var dot_size: float = maxf(minimap_scale * 1.5, 2.5)

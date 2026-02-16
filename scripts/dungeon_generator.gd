@@ -39,6 +39,36 @@ func generate(width: int = 60, height: int = 60) -> TileMapData:
 	
 	return map_data
 
+func generate_boss_floor() -> TileMapData:
+	# Boss floor: single 20x20 room centered in a 24x24 map
+	var bw: int = 24
+	var bh: int = 24
+	map_data = TileMapData.new(bw, bh)
+	rooms.clear()
+	
+	# Carve a 20x20 room in the center
+	var room_x: int = 2
+	var room_y: int = 2
+	var room_w: int = 20
+	var room_h: int = 20
+	
+	for y in range(room_y, room_y + room_h):
+		for x in range(room_x, room_x + room_w):
+			map_data.set_tile(x, y, TileMapData.Tile.FLOOR)
+	
+	rooms.append(Rect2i(room_x, room_y, room_w, room_h))
+	
+	# No stairs initially; stairs appear after boss is killed
+	return map_data
+
+func get_boss_room_center() -> Vector2i:
+	# Center of the 20x20 room in 24x24 map
+	return Vector2i(12, 12)
+
+func get_boss_player_start() -> Vector2i:
+	# Player starts near the bottom of the room
+	return Vector2i(12, 19)
+
 func _split(leaf: BSPLeaf, depth: int) -> void:
 	if depth >= MAX_DEPTH:
 		return
