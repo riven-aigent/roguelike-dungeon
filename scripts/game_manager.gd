@@ -55,6 +55,19 @@ var touch_start: Vector2 = Vector2.ZERO
 var is_touching: bool = false
 const SWIPE_THRESHOLD := 30.0
 
+# D-pad touch controls
+const DPAD_BTN_SIZE := 56.0
+const DPAD_GAP := 4.0
+const DPAD_MARGIN_BOTTOM := 28.0
+const DPAD_ALPHA := 0.35
+const DPAD_PRESSED_ALPHA := 0.6
+var dpad_pressed_dir: Vector2i = Vector2i.ZERO
+var dpad_touch_index: int = -1
+var dpad_repeat_timer: float = 0.0
+const DPAD_REPEAT_DELAY := 0.28
+const DPAD_REPEAT_RATE := 0.12
+var dpad_repeat_started: bool = false
+
 # Turn counter (for Golem/Lich mechanics)
 var turn_count: int = 0
 
@@ -263,6 +276,36 @@ func _is_explored(pos: Vector2i) -> bool:
 func _calculate_score() -> int:
 	return kill_count * 10 + gold_collected + current_floor * 5
 
+
+# === D-PAD HELPERS ===
+func _get_dpad_center() -> Vector2:
+	var cx: float = 90.0
+	var cy: float = float(viewport_h) - DPAD_BTN_SIZE - DPAD_MARGIN_BOTTOM - DPAD_GAP
+	return Vector2(cx, cy)
+
+func _get_dpad_rects() -> Dictionary:
+	var c: Vector2 = _get_dpad_center()
+	var s: float = DPAD_BTN_SIZE
+	var g: float = DPAD_GAP
+	return {
+		"up": Rect2(c.x - s / 2.0, c.y - s * 1.5 - g, s, s),
+		"down": Rect2(c.x - s / 2.0, c.y + s * 0.5 + g, s, s),
+		"left": Rect2(c.x - s * 1.5 - g, c.y - s / 2.0, s, s),
+		"right": Rect2(c.x + s * 0.5 + g, c.y - s / 2.0, s, s),
+	}
+
+func _dpad_hit_test(pos: Vector2) -> Vector2i:
+	var rects: Dictionary = _get_dpad_rects()
+	if rects["up"].has_point(pos):
+		return Vector2i(0, -1)
+	if rects["down"].has_point(pos):
+		return Vector2i(0, 1)
+	if rects["left"].has_point(pos):
+		return Vector2i(-1, 0)
+	if rects["right"].has_point(pos):
+		return Vector2i(1, 0)
+	return Vector2i.ZERO
+
 func _process(delta: float) -> void:
 	# Age log messages
 	var needs_redraw: bool = false
@@ -278,6 +321,20 @@ func _process(delta: float) -> void:
 		if damage_flash_timer <= 0:
 			damage_flash_timer = 0.0
 		needs_redraw = true
+	# D-pad hold repeat
+	if dpad_pressed_dir != Vector2i.ZERO and not game_over:
+		dpad_repeat_timer += delta
+		if not dpad_repeat_started:
+			if dpad_repeat_timer >= DPAD_REPEAT_DELAY:
+				dpad_repeat_started = true
+				dpad_repeat_timer = 0.0
+				_try_move(dpad_pressed_dir)
+				needs_redraw = true
+		else:
+			if dpad_repeat_timer >= DPAD_REPEAT_RATE:
+				dpad_repeat_timer = 0.0
+				_try_move(dpad_pressed_dir)
+				needs_redraw = true
 	if needs_redraw:
 		queue_redraw()
 
@@ -306,29 +363,59 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("move_right"):
 		dir = Vector2i(1, 0)
 
-	# Touch / swipe
+	# D-pad touch buttons
 	if event is InputEventScreenTouch:
 		var touch_event: InputEventScreenTouch = event as InputEventScreenTouch
 		if touch_event.pressed:
-			touch_start = touch_event.position
-			is_touching = true
-		else:
-			is_touching = false
-	elif event is InputEventScreenDrag and is_touching:
-		var drag_event: InputEventScreenDrag = event as InputEventScreenDrag
-		var delta_pos: Vector2 = drag_event.position - touch_start
-		if delta_pos.length() > SWIPE_THRESHOLD:
-			is_touching = false
-			if abs(delta_pos.x) > abs(delta_pos.y):
-				if delta_pos.x > 0:
-					dir = Vector2i(1, 0)
-				else:
-					dir = Vector2i(-1, 0)
+			var dpad_dir: Vector2i = _dpad_hit_test(touch_event.position)
+			if dpad_dir != Vector2i.ZERO:
+				dir = dpad_dir
+				dpad_pressed_dir = dpad_dir
+				dpad_touch_index = touch_event.index
+				dpad_repeat_timer = 0.0
+				dpad_repeat_started = false
+				queue_redraw()
 			else:
-				if delta_pos.y > 0:
-					dir = Vector2i(0, 1)
+				touch_start = touch_event.position
+				is_touching = true
+		else:
+			if touch_event.index == dpad_touch_index:
+				dpad_pressed_dir = Vector2i.ZERO
+				dpad_touch_index = -1
+				dpad_repeat_timer = 0.0
+				dpad_repeat_started = false
+				queue_redraw()
+			is_touching = false
+	elif event is InputEventScreenDrag:
+		if dpad_touch_index >= 0 and event is InputEventScreenDrag:
+			var drag_ev: InputEventScreenDrag = event as InputEventScreenDrag
+			if drag_ev.index == dpad_touch_index:
+				var new_dir: Vector2i = _dpad_hit_test(drag_ev.position)
+				if new_dir != dpad_pressed_dir:
+					if new_dir != Vector2i.ZERO:
+						dpad_pressed_dir = new_dir
+						dpad_repeat_timer = 0.0
+						dpad_repeat_started = false
+						dir = new_dir
+					else:
+						dpad_pressed_dir = Vector2i.ZERO
+						dpad_touch_index = -1
+					queue_redraw()
+		elif is_touching:
+			var drag_event: InputEventScreenDrag = event as InputEventScreenDrag
+			var delta_pos: Vector2 = drag_event.position - touch_start
+			if delta_pos.length() > SWIPE_THRESHOLD:
+				is_touching = false
+				if abs(delta_pos.x) > abs(delta_pos.y):
+					if delta_pos.x > 0:
+						dir = Vector2i(1, 0)
+					else:
+						dir = Vector2i(-1, 0)
 				else:
-					dir = Vector2i(0, -1)
+					if delta_pos.y > 0:
+						dir = Vector2i(0, 1)
+					else:
+						dir = Vector2i(0, -1)
 
 	if dir != Vector2i.ZERO:
 		_try_move(dir)
@@ -936,6 +1023,9 @@ func _draw() -> void:
 		var lu_color: Color = Color(1.0, 0.85, 0.1, lu_alpha)
 		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - 60.0, lu_y), lu_text, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 26, lu_color)
 
+	# === D-PAD ===
+	_draw_dpad()
+
 	# Boss floor warning
 	if is_boss_floor and not boss_defeated:
 		var warn_alpha: float = 0.5 + 0.3 * sin(float(turn_count) * 0.5)
@@ -1034,3 +1124,61 @@ func _draw_minimap() -> void:
 	var pp_y: float = mm_y + float(player_pos.y) * minimap_scale
 	var dot_size: float = maxf(minimap_scale * 1.5, 2.5)
 	draw_rect(Rect2(pp_x - dot_size * 0.25, pp_y - dot_size * 0.25, dot_size, dot_size), Color(0.2, 1.0, 0.2))
+
+
+func _draw_dpad() -> void:
+	if game_over:
+		return
+	var rects: Dictionary = _get_dpad_rects()
+	var dirs: Dictionary = {
+		"up": Vector2i(0, -1),
+		"down": Vector2i(0, 1),
+		"left": Vector2i(-1, 0),
+		"right": Vector2i(1, 0),
+	}
+	for key in rects:
+		var r: Rect2 = rects[key]
+		var is_pressed: bool = (dirs[key] == dpad_pressed_dir and dpad_pressed_dir != Vector2i.ZERO)
+		var alpha: float = DPAD_PRESSED_ALPHA if is_pressed else DPAD_ALPHA
+		# Button background
+		draw_rect(r, Color(0.3, 0.3, 0.35, alpha))
+		# Button border
+		var border_color: Color = Color(0.6, 0.6, 0.65, alpha)
+		if is_pressed:
+			border_color = Color(0.4, 0.9, 0.4, 0.8)
+		draw_rect(Rect2(r.position.x, r.position.y, r.size.x, 2), border_color)
+		draw_rect(Rect2(r.position.x, r.position.y + r.size.y - 2, r.size.x, 2), border_color)
+		draw_rect(Rect2(r.position.x, r.position.y, 2, r.size.y), border_color)
+		draw_rect(Rect2(r.position.x + r.size.x - 2, r.position.y, 2, r.size.y), border_color)
+		# Arrow icon
+		var cx: float = r.position.x + r.size.x / 2.0
+		var cy: float = r.position.y + r.size.y / 2.0
+		var arrow_s: float = 12.0
+		var arrow_color: Color = Color(0.9, 0.9, 0.9, alpha + 0.2)
+		if is_pressed:
+			arrow_color = Color(0.4, 1.0, 0.4, 0.9)
+		match key:
+			"up":
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(cx, cy - arrow_s),
+					Vector2(cx + arrow_s * 0.7, cy + arrow_s * 0.4),
+					Vector2(cx - arrow_s * 0.7, cy + arrow_s * 0.4)
+				]), arrow_color)
+			"down":
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(cx, cy + arrow_s),
+					Vector2(cx + arrow_s * 0.7, cy - arrow_s * 0.4),
+					Vector2(cx - arrow_s * 0.7, cy - arrow_s * 0.4)
+				]), arrow_color)
+			"left":
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(cx - arrow_s, cy),
+					Vector2(cx + arrow_s * 0.4, cy - arrow_s * 0.7),
+					Vector2(cx + arrow_s * 0.4, cy + arrow_s * 0.7)
+				]), arrow_color)
+			"right":
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(cx + arrow_s, cy),
+					Vector2(cx - arrow_s * 0.4, cy - arrow_s * 0.7),
+					Vector2(cx - arrow_s * 0.4, cy + arrow_s * 0.7)
+				]), arrow_color)
