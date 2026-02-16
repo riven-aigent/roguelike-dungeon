@@ -1,6 +1,8 @@
 extends Node2D
 
 const TILE_SIZE := 32
+const FOG_RADIUS := 6
+const FOG_RADIUS_SQ := FOG_RADIUS * FOG_RADIUS
 
 var map_data: TileMapData
 var generator: DungeonGenerator
@@ -20,6 +22,18 @@ var kill_count: int = 0
 # Enemies
 var enemies: Array = []  # Array of Enemy
 
+# Items
+var items: Array = []  # Array of Item
+var gold_collected: int = 0
+
+# Score
+var score: int = 0
+
+# Fog of war
+var revealed: Dictionary = {}   # Vector2i -> true (currently visible)
+var explored: Dictionary = {}   # Vector2i -> true (previously seen)
+var stairs_found: Dictionary = {} # Vector2i -> true (stairs discovered)
+
 # Game state
 var game_over: bool = false
 var damage_flash_timer: float = 0.0
@@ -37,10 +51,17 @@ var color_player: Color = Color(0.2, 0.9, 0.2)
 var color_bg: Color = Color(0.05, 0.05, 0.07)
 var color_text: Color = Color(0.9, 0.9, 0.8)
 var color_hud_bg: Color = Color(0.0, 0.0, 0.0, 0.7)
+var color_fog: Color = Color(0.0, 0.0, 0.0)  # Unexplored
+var color_dim: float = 0.45  # Multiplier for explored-but-not-visible tiles
 
 # Viewport
 var viewport_w: int = 480
 var viewport_h: int = 800
+
+# Minimap
+const MINIMAP_SIZE := 120
+const MINIMAP_MARGIN := 8
+var minimap_scale: float = 2.0
 
 func _ready() -> void:
 	generator = DungeonGenerator.new()
@@ -49,7 +70,13 @@ func _ready() -> void:
 func _generate_floor() -> void:
 	map_data = generator.generate(60, 60)
 	player_pos = map_data.get_random_floor_tile()
+	# Reset fog for new floor
+	revealed.clear()
+	explored.clear()
+	stairs_found.clear()
 	_spawn_enemies()
+	_spawn_items()
+	_update_visibility()
 	_update_camera()
 	_show_message("Floor " + str(current_floor))
 	queue_redraw()
@@ -96,9 +123,69 @@ func _spawn_enemies() -> void:
 		enemies.append(enemy)
 		occupied[pos] = true
 
+func _spawn_items() -> void:
+	items.clear()
+	var count: int = 2 + (randi() % 3)  # 2-4 items
+
+	var occupied: Dictionary = {}
+	occupied[player_pos] = true
+	for enemy in enemies:
+		occupied[enemy.pos] = true
+	for y in range(map_data.height):
+		for x in range(map_data.width):
+			if map_data.get_tile(x, y) == TileMapData.Tile.STAIRS_DOWN:
+				occupied[Vector2i(x, y)] = true
+
+	var item_types: Array = [Item.Type.HEALTH_POTION, Item.Type.STRENGTH_POTION, Item.Type.SHIELD_SCROLL, Item.Type.GOLD]
+	# Weight: health potions and gold more common
+	var weighted: Array = [
+		Item.Type.HEALTH_POTION, Item.Type.HEALTH_POTION,
+		Item.Type.GOLD, Item.Type.GOLD, Item.Type.GOLD,
+		Item.Type.STRENGTH_POTION,
+		Item.Type.SHIELD_SCROLL
+	]
+
+	var attempts: int = 0
+	while items.size() < count and attempts < 200:
+		attempts += 1
+		var pos: Vector2i = map_data.get_random_floor_tile()
+		if occupied.has(pos):
+			continue
+		var t: int = weighted[randi() % weighted.size()]
+		var item: Item = Item.new()
+		item.setup(t, pos)
+		items.append(item)
+		occupied[pos] = true
+
+func _update_visibility() -> void:
+	revealed.clear()
+	var px: int = player_pos.x
+	var py: int = player_pos.y
+	for dy in range(-FOG_RADIUS, FOG_RADIUS + 1):
+		for dx in range(-FOG_RADIUS, FOG_RADIUS + 1):
+			if dx * dx + dy * dy <= FOG_RADIUS_SQ:
+				var tx: int = px + dx
+				var ty: int = py + dy
+				if tx >= 0 and tx < map_data.width and ty >= 0 and ty < map_data.height:
+					var tpos: Vector2i = Vector2i(tx, ty)
+					revealed[tpos] = true
+					explored[tpos] = true
+					# Track stairs discovery
+					if map_data.get_tile(tx, ty) == TileMapData.Tile.STAIRS_DOWN:
+						stairs_found[tpos] = true
+
+func _is_visible(pos: Vector2i) -> bool:
+	return revealed.has(pos)
+
+func _is_explored(pos: Vector2i) -> bool:
+	return explored.has(pos)
+
 func _show_message(msg: String) -> void:
 	message = msg
 	message_timer = 2.5
+
+func _calculate_score() -> int:
+	return kill_count * 10 + gold_collected + current_floor * 5
 
 func _process(delta: float) -> void:
 	if message_timer > 0:
@@ -176,11 +263,15 @@ func _try_move(dir: Vector2i) -> void:
 	if target_enemy != null:
 		_player_attack(target_enemy)
 		_enemy_turn()
+		_update_visibility()
 		_update_camera()
 		queue_redraw()
 		return
 
 	player_pos = new_pos
+
+	# Check for items at this position
+	_check_item_pickup()
 
 	# Check stairs
 	var tile: int = map_data.get_tile(player_pos.x, player_pos.y)
@@ -191,8 +282,33 @@ func _try_move(dir: Vector2i) -> void:
 
 	# Enemy turn after player moves
 	_enemy_turn()
+	_update_visibility()
 	_update_camera()
+	score = _calculate_score()
 	queue_redraw()
+
+func _check_item_pickup() -> void:
+	for item in items:
+		if item.collected:
+			continue
+		if item.pos == player_pos:
+			item.collected = true
+			match item.type:
+				Item.Type.HEALTH_POTION:
+					var heal: int = mini(8, player_max_hp - player_hp)
+					player_hp += heal
+					_show_message("Picked up Health Potion! +" + str(heal) + " HP")
+				Item.Type.STRENGTH_POTION:
+					player_atk += 1
+					_show_message("Picked up Strength Potion! +1 ATK")
+				Item.Type.SHIELD_SCROLL:
+					player_def += 1
+					_show_message("Picked up Shield Scroll! +1 DEF")
+				Item.Type.GOLD:
+					gold_collected += 10
+					_show_message("Picked up Gold! +10 score")
+			score = _calculate_score()
+			return
 
 func _player_attack(enemy: Enemy) -> void:
 	var dmg: int = enemy.take_damage(player_atk)
@@ -201,6 +317,7 @@ func _player_attack(enemy: Enemy) -> void:
 	else:
 		_show_message("Killed " + enemy.name_str + "! (+" + str(dmg) + ")")
 		kill_count += 1
+		score = _calculate_score()
 
 func _enemy_turn() -> void:
 	for enemy in enemies:
@@ -240,6 +357,7 @@ func _enemy_attack(enemy: Enemy) -> void:
 	if player_hp <= 0:
 		player_hp = 0
 		game_over = true
+		score = _calculate_score()
 
 func _get_chase_dir(from: Vector2i, to: Vector2i) -> Vector2i:
 	var dx: int = to.x - from.x
@@ -300,7 +418,11 @@ func _restart_game() -> void:
 	game_over = false
 	current_floor = 1
 	player_hp = player_max_hp
+	player_atk = 3
+	player_def = 1
 	kill_count = 0
+	gold_collected = 0
+	score = 0
 	damage_flash_timer = 0.0
 	_generate_floor()
 
@@ -325,9 +447,17 @@ func _draw() -> void:
 	end_x = mini(end_x, map_data.width)
 	end_y = mini(end_y, map_data.height)
 
-	# Draw tiles
+	# Draw tiles (with fog of war)
 	for y in range(start_y, end_y):
 		for x in range(start_x, end_x):
+			var tpos: Vector2i = Vector2i(x, y)
+			var visible: bool = _is_visible(tpos)
+			var was_explored: bool = _is_explored(tpos)
+
+			if not visible and not was_explored:
+				# Completely hidden: draw black
+				continue
+
 			var tile: int = map_data.get_tile(x, y)
 			var rect: Rect2 = Rect2(
 				float(x * TILE_SIZE) + camera_offset.x,
@@ -336,18 +466,78 @@ func _draw() -> void:
 				float(TILE_SIZE - 1)
 			)
 
+			var tile_color: Color
 			if tile == TileMapData.Tile.WALL:
-				draw_rect(rect, color_wall)
+				tile_color = color_wall
 			elif tile == TileMapData.Tile.FLOOR:
-				draw_rect(rect, color_floor)
+				tile_color = color_floor
 			elif tile == TileMapData.Tile.STAIRS_DOWN:
-				draw_rect(rect, color_stairs)
+				# Stairs: always show if discovered, even in fog
+				if stairs_found.has(tpos):
+					tile_color = color_stairs
+				else:
+					tile_color = color_floor
 			elif tile == TileMapData.Tile.DOOR:
-				draw_rect(rect, Color(0.6, 0.4, 0.1))
+				tile_color = Color(0.6, 0.4, 0.1)
+			else:
+				tile_color = color_floor
 
-	# Draw enemies
+			# Dim explored-but-not-visible tiles
+			if not visible:
+				tile_color = Color(
+					tile_color.r * color_dim,
+					tile_color.g * color_dim,
+					tile_color.b * color_dim
+				)
+
+			draw_rect(rect, tile_color)
+
+	# Draw items (only if visible, not collected)
+	for item in items:
+		if item.collected:
+			continue
+		if not _is_visible(item.pos):
+			continue
+		var ix: float = float(item.pos.x * TILE_SIZE) + camera_offset.x
+		var iy: float = float(item.pos.y * TILE_SIZE) + camera_offset.y
+		var icx: float = ix + float(TILE_SIZE) / 2.0
+		var icy: float = iy + float(TILE_SIZE) / 2.0
+		var icolor: Color = item.get_color()
+
+		match item.type:
+			Item.Type.HEALTH_POTION:
+				# Red cross/plus
+				var s: float = float(TILE_SIZE) * 0.12
+				var l: float = float(TILE_SIZE) * 0.3
+				draw_rect(Rect2(icx - s, icy - l, s * 2.0, l * 2.0), icolor)
+				draw_rect(Rect2(icx - l, icy - s, l * 2.0, s * 2.0), icolor)
+			Item.Type.STRENGTH_POTION:
+				# Orange up-arrow
+				var s: float = float(TILE_SIZE) * 0.25
+				var pts: PackedVector2Array = PackedVector2Array([
+					Vector2(icx, icy - s * 1.2),
+					Vector2(icx + s, icy + s * 0.4),
+					Vector2(icx + s * 0.3, icy + s * 0.4),
+					Vector2(icx + s * 0.3, icy + s * 1.2),
+					Vector2(icx - s * 0.3, icy + s * 1.2),
+					Vector2(icx - s * 0.3, icy + s * 0.4),
+					Vector2(icx - s, icy + s * 0.4)
+				])
+				draw_colored_polygon(pts, icolor)
+			Item.Type.SHIELD_SCROLL:
+				# Blue square with border feel
+				var s: float = float(TILE_SIZE) * 0.28
+				draw_rect(Rect2(icx - s, icy - s, s * 2.0, s * 2.0), icolor)
+				draw_rect(Rect2(icx - s * 0.6, icy - s * 0.6, s * 1.2, s * 1.2), Color(0.15, 0.25, 0.5))
+			Item.Type.GOLD:
+				# Yellow dot
+				draw_circle(Vector2(icx, icy), float(TILE_SIZE) * 0.22, icolor)
+
+	# Draw enemies (only if visible)
 	for enemy in enemies:
 		if not enemy.alive:
+			continue
+		if not _is_visible(enemy.pos):
 			continue
 		var ex: float = float(enemy.pos.x * TILE_SIZE) + camera_offset.x
 		var ey: float = float(enemy.pos.y * TILE_SIZE) + camera_offset.y
@@ -363,10 +553,8 @@ func _draw() -> void:
 
 		match enemy.type:
 			Enemy.Type.SLIME:
-				# Yellow-green filled circle
 				draw_circle(Vector2(ecx, ecy), float(TILE_SIZE) * 0.35, ecolor)
 			Enemy.Type.BAT:
-				# Purple diamond
 				var s: float = float(TILE_SIZE) * 0.35
 				var pts: PackedVector2Array = PackedVector2Array([
 					Vector2(ecx, ecy - s),
@@ -376,11 +564,9 @@ func _draw() -> void:
 				])
 				draw_colored_polygon(pts, ecolor)
 			Enemy.Type.SKELETON:
-				# White rectangle
 				var s: float = float(TILE_SIZE) * 0.3
 				draw_rect(Rect2(ecx - s, ecy - s, s * 2.0, s * 2.0), ecolor)
 			Enemy.Type.ORC:
-				# Dark red larger circle
 				draw_circle(Vector2(ecx, ecy), float(TILE_SIZE) * 0.42, ecolor)
 
 		# Enemy HP bar (small bar above enemy)
@@ -404,11 +590,11 @@ func _draw() -> void:
 	draw_circle(player_screen, float(TILE_SIZE) * 0.4, player_color)
 
 	# === HUD ===
-	# HUD background (taller for HP bar)
-	draw_rect(Rect2(0, 0, viewport_w, 52), color_hud_bg)
+	var hud_h: float = 62.0
+	draw_rect(Rect2(0, 0, viewport_w, hud_h), color_hud_bg)
 
-	# HUD text line 1
-	var hud_text: String = "Floor: " + str(current_floor) + "  |  Kills: " + str(kill_count)
+	# HUD line 1: Floor | Kills | Score
+	var hud_text: String = "Floor: " + str(current_floor) + "  |  Kills: " + str(kill_count) + "  |  Score: " + str(score)
 	draw_string(ThemeDB.fallback_font, Vector2(10, 18), hud_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, color_text)
 
 	# HP bar
@@ -420,9 +606,7 @@ func _draw() -> void:
 	var bar_h: float = 14.0
 	var bar_y: float = 25.0
 	var hp_ratio: float = float(player_hp) / float(player_max_hp)
-	# Background
 	draw_rect(Rect2(bar_start_x, bar_y, bar_w, bar_h), Color(0.3, 0.0, 0.0))
-	# Fill
 	var hp_color: Color
 	if hp_ratio > 0.5:
 		hp_color = Color(0.2, 0.8, 0.2)
@@ -434,29 +618,72 @@ func _draw() -> void:
 
 	# ATK/DEF display
 	var stat_text: String = "ATK:" + str(player_atk) + " DEF:" + str(player_def)
-	draw_string(ThemeDB.fallback_font, Vector2(10, 50), stat_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.7, 0.7, 0.6))
+	draw_string(ThemeDB.fallback_font, Vector2(10, 56), stat_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.7, 0.7, 0.6))
+
+	# Gold display next to stats
+	var gold_text: String = "Gold:" + str(gold_collected)
+	draw_string(ThemeDB.fallback_font, Vector2(160, 56), gold_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1.0, 0.85, 0.1))
 
 	# Message
 	if message != "":
-		var msg_y: float = 72.0
+		var msg_y: float = hud_h + 18.0
 		draw_rect(Rect2(0, msg_y - 16.0, viewport_w, 22.0), Color(0.0, 0.0, 0.0, 0.6))
 		draw_string(ThemeDB.fallback_font, Vector2(10, msg_y), message, HORIZONTAL_ALIGNMENT_LEFT, viewport_w - 20, 14, color_stairs)
 
+	# === MINIMAP ===
+	_draw_minimap()
+
 	# Game over overlay
 	if game_over:
-		# Dark overlay
 		draw_rect(Rect2(0, 0, viewport_w, viewport_h), Color(0.0, 0.0, 0.0, 0.75))
 
-		# "You Died" title
 		var title: String = "YOU DIED"
 		var title_w: float = float(title.length()) * 14.0
-		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - title_w / 2.0, float(viewport_h) / 2.0 - 40.0), title, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 28, Color(0.9, 0.15, 0.15))
+		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - title_w / 2.0, float(viewport_h) / 2.0 - 60.0), title, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 28, Color(0.9, 0.15, 0.15))
 
-		# Stats
+		var score_text: String = "Score: " + str(score)
 		var floor_text: String = "Reached Floor " + str(current_floor)
 		var kills_text: String = "Enemies Slain: " + str(kill_count)
+		var gold_text2: String = "Gold: " + str(gold_collected)
 		var restart_text: String = "Tap or press any key to restart"
 
-		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - float(floor_text.length()) * 5.0, float(viewport_h) / 2.0 + 10.0), floor_text, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 18, color_text)
+		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - float(score_text.length()) * 6.0, float(viewport_h) / 2.0 - 20.0), score_text, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 22, Color(1.0, 0.85, 0.1))
+		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - float(floor_text.length()) * 5.0, float(viewport_h) / 2.0 + 15.0), floor_text, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 18, color_text)
 		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - float(kills_text.length()) * 5.0, float(viewport_h) / 2.0 + 40.0), kills_text, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 18, color_text)
-		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - float(restart_text.length()) * 4.0, float(viewport_h) / 2.0 + 90.0), restart_text, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 14, Color(0.6, 0.6, 0.5))
+		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - float(gold_text2.length()) * 5.0, float(viewport_h) / 2.0 + 65.0), gold_text2, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 18, color_text)
+		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - float(restart_text.length()) * 4.0, float(viewport_h) / 2.0 + 110.0), restart_text, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 14, Color(0.6, 0.6, 0.5))
+
+func _draw_minimap() -> void:
+	# Position: top-right corner below HUD
+	var mm_x: float = float(viewport_w - MINIMAP_SIZE - MINIMAP_MARGIN)
+	var mm_y: float = 66.0  # Below HUD
+
+	# Background
+	draw_rect(Rect2(mm_x - 2, mm_y - 2, MINIMAP_SIZE + 4, MINIMAP_SIZE + 4), Color(0.3, 0.3, 0.3, 0.8))
+	draw_rect(Rect2(mm_x, mm_y, MINIMAP_SIZE, MINIMAP_SIZE), Color(0.0, 0.0, 0.0, 0.9))
+
+	# Scale: map tiles to minimap pixels
+	minimap_scale = float(MINIMAP_SIZE) / float(maxi(map_data.width, map_data.height))
+
+	# Draw explored tiles
+	for tpos in explored:
+		var tx: int = tpos.x
+		var ty: int = tpos.y
+		var tile: int = map_data.get_tile(tx, ty)
+		var px: float = mm_x + float(tx) * minimap_scale
+		var py: float = mm_y + float(ty) * minimap_scale
+		var ps: float = maxf(minimap_scale, 1.0)
+
+		if tile == TileMapData.Tile.WALL:
+			draw_rect(Rect2(px, py, ps, ps), Color(0.2, 0.12, 0.06, 0.7))
+		elif tile == TileMapData.Tile.FLOOR or tile == TileMapData.Tile.DOOR:
+			draw_rect(Rect2(px, py, ps, ps), Color(0.3, 0.3, 0.35, 0.7))
+		elif tile == TileMapData.Tile.STAIRS_DOWN:
+			if stairs_found.has(tpos):
+				draw_rect(Rect2(px, py, ps + 1.0, ps + 1.0), Color(0.0, 0.9, 0.9))
+
+	# Player dot (larger, bright green)
+	var pp_x: float = mm_x + float(player_pos.x) * minimap_scale
+	var pp_y: float = mm_y + float(player_pos.y) * minimap_scale
+	var dot_size: float = maxf(minimap_scale * 1.5, 2.5)
+	draw_rect(Rect2(pp_x - dot_size * 0.25, pp_y - dot_size * 0.25, dot_size, dot_size), Color(0.2, 1.0, 0.2))

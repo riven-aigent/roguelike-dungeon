@@ -12,7 +12,11 @@ A turn-based roguelike dungeon crawler built with Godot 4.6.
 - **Enemies & Combat** — Bump-to-attack combat with 4 enemy types that scale by floor.
 - **Enemy AI** — Enemies chase you within 5 tiles, otherwise wander randomly.
 - **Player Stats** — HP, ATK, DEF. Survive as long as you can.
-- **Game Over & Restart** — Die and see your score. Tap to try again.
+- **Items & Loot** — Health Potions, Strength Potions, Shield Scrolls, and Gold scattered across each floor.
+- **Fog of War** — Tiles start hidden. Explore to reveal a 6-tile radius around you. Previously seen areas stay dimmed.
+- **Score System** — Earn points from kills, gold, and floor depth. Final score shown on death.
+- **Minimap** — 120x120 pixel minimap showing explored areas, stairs, and your position.
+- **Game Over & Restart** — Die and see your final score. Tap to try again.
 - **Mobile-First** — 480x800 portrait viewport. Swipe to move on touch devices.
 - **Pure Rendering** — No sprites needed. Everything drawn with `_draw()` calls.
 
@@ -23,8 +27,20 @@ A turn-based roguelike dungeon crawler built with Godot 4.6.
 | WASD / Arrow Keys | Move |
 | Swipe (touch) | Move |
 | Walk into enemy | Attack |
+| Walk over item | Auto-collect |
 | Step on cyan tile | Descend to next floor |
 | Any key/tap on Game Over | Restart |
+
+## Items
+
+| Item | Symbol | Color | Effect |
+|------|--------|-------|--------|
+| Health Potion | Red Cross | Red | Heals 8 HP (capped at max) |
+| Strength Potion | Up Arrow | Orange | +1 ATK permanently |
+| Shield Scroll | Square | Blue | +1 DEF permanently |
+| Gold | Dot | Yellow | +10 score |
+
+2-4 items spawn per floor on random floor tiles.
 
 ## Enemies
 
@@ -35,6 +51,21 @@ A turn-based roguelike dungeon crawler built with Godot 4.6.
 | Skeleton | Square | White | 5 | 2 | 1 | 3+ |
 | Orc | Large Circle | Dark Red | 8 | 3 | 2 | 5+ |
 
+## Fog of War
+
+- All tiles start hidden (black)
+- Moving reveals tiles within a 6-tile Euclidean radius
+- Previously explored tiles appear dimmed (45% brightness)
+- Enemies and items are only visible within the light radius
+- Stairs remain visible once discovered, even in fog
+- Each new floor starts with fresh fog
+
+## Score
+
+Score = (Kills x 10) + Gold Collected + (Floor x 5)
+
+Shown live in the HUD and as final score on death.
+
 ## Color Key
 
 | Color | Meaning |
@@ -43,6 +74,10 @@ A turn-based roguelike dungeon crawler built with Godot 4.6.
 | ⬛ Dark Gray | Floor |
 | 🟦 Cyan | Stairs Down |
 | 🟢 Green Circle | You (flashes red when hit) |
+| 🔴 Red Cross | Health Potion |
+| 🟠 Orange Arrow | Strength Potion |
+| 🔵 Blue Square | Shield Scroll |
+| 🟡 Yellow Dot | Gold |
 
 ## Combat
 
@@ -66,10 +101,13 @@ A turn-based roguelike dungeon crawler built with Godot 4.6.
 - [x] Turn-based movement
 - [x] Enemies with basic AI
 - [x] Combat system (bump-to-attack)
-- [ ] Items and inventory
-- [ ] Field of view / fog of war
+- [x] Items and inventory (potions, scrolls, gold)
+- [x] Fog of war (6-tile reveal radius)
+- [x] Score system
+- [x] Minimap
 - [ ] Sound effects
 - [ ] More tile types and room features
+- [ ] Equipment system
 
 ---
 
