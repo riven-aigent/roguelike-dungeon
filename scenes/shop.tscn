@@ -1,0 +1,36 @@
+[gd_scene load_steps=2 format=3 uid="uid://c9xk2m4n5p7qr"]
+
+[ext_resource type="Script" path="res://scripts/shop_ui.gd" id="1_shop_ui"]
+
+[node name="ShopUI" type="Control"]
+script = ExtResource("1_shop_ui")
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="Background" type="Panel" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_type_variation = "Panel"
+
+[node name="Title" type="Label" parent="."]
+text = "MERCHANT'S SHOP"
+position = Vector2(20, 20)
+size_flags_horizontal = 3
+size_flags_vertical = 0
+theme_type_variation = "HeaderSmall"
+
+[node name="GoldDisplay" type="Label" parent="."]
+text = "Gold: 0"
+position = Vector2(20, 50)
+theme_type_variation = "Label"
+
+[node name="ItemsContainer" type="VBoxContainer" parent="."]
+position = Vector2(20, 80)
+size_flags_horizontal = 3
+custom_constants/separation = 10
+
+[node name="CloseButton" type="Button" parent="."]
+text = "Continue Journey"
+position = Vector2(20, 400)
+size_flags_horizontal = 3

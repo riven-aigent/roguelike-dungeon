@@ -20,7 +20,7 @@ class BSPLeaf:
 		right = null
 		room = Rect2i()
 
-func generate(width: int = 60, height: int = 60) -> TileMapData:
+func generate(width: int = 60, height: int = 60, is_shop_floor: bool = false) -> TileMapData:
 	map_data = TileMapData.new(width, height)
 	rooms.clear()
 	
@@ -36,6 +36,9 @@ func generate(width: int = 60, height: int = 60) -> TileMapData:
 		var sx: int = stairs_room.position.x + (randi() % maxi(stairs_room.size.x, 1))
 		var sy: int = stairs_room.position.y + (randi() % maxi(stairs_room.size.y, 1))
 		map_data.set_tile(sx, sy, TileMapData.Tile.STAIRS_DOWN)
+	# Place shop tile if this is a shop floor
+	if is_shop_floor:
+		_place_shop_tile()
 	
 	return map_data
 
@@ -153,6 +156,20 @@ func _create_corridors(leaf: BSPLeaf) -> void:
 	else:
 		_carve_v_corridor(center_a.y, center_b.y, center_a.x)
 		_carve_h_corridor(center_a.x, center_b.x, center_b.y)
+
+func _place_shop_tile() -> void:
+	# Place a shop tile in a random room (not the first or last room)
+	if rooms.size() < 2:
+		return
+	
+	# Choose a random room that's not the first or last
+	var room_index: int = 1 + (randi() % maxi(rooms.size() - 2, 1))
+	var room: Rect2i = rooms[room_index]
+	
+	# Place shop tile at a random position within the room
+	var sx: int = room.position.x + (randi() % maxi(room.size.x, 1))
+	var sy: int = room.position.y + (randi() % maxi(room.size.y, 1))
+	map_data.set_tile(sx, sy, TileMapData.Tile.SHOP)
 
 func _carve_h_corridor(x1: int, x2: int, y: int) -> void:
 	var start_x: int = mini(x1, x2)

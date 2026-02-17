@@ -1,6 +1,17 @@
 extends Node2D
+# Load additional scripts
+const PersistentData = preload("res://scripts/persistent_data.gd")
+const ShopSystem = preload("res://scripts/shop_system.gd")
 
 const TILE_SIZE := 32
+# Persistent progression
+var persistent_data: PersistentData
+var shop_system: ShopSystem
+
+# Shop state
+var in_shop: bool = false
+var shop_items: Array = []
+var has_visited_shop_this_floor: bool = false
 const FOG_RADIUS := 6
 const FOG_RADIUS_SQ := FOG_RADIUS * FOG_RADIUS
 
@@ -32,6 +43,8 @@ var enemies: Array = []  # Array of Enemy
 # Items
 var items: Array = []  # Array of Item
 var gold_collected: int = 0
+# Shop UI reference
+var shop_ui: ShopUI
 
 # Score
 var score: int = 0
@@ -92,11 +105,31 @@ const MINIMAP_MARGIN := 8
 var minimap_scale: float = 2.0
 
 func _ready() -> void:
+	# Initialize persistent data
+	persistent_data = PersistentData.new()
+	persistent_data.load()
+	
+	# Initialize shop system
+	shop_system = ShopSystem.new()
+	shop_system.initialize(persistent_data)
+	# Create shop UI instance
+	shop_ui = ShopUI.new()
+	add_child(shop_ui)
+	shop_ui.hide()
+	
+	# Connect shop signals
+	shop_ui.item_purchased.connect(_on_shop_item_purchased)
+	shop_ui.shop_closed.connect(_on_shop_closed)
+	
 	generator = DungeonGenerator.new()
 	_generate_floor()
 
 func _is_boss_floor_num(floor_num: int) -> bool:
 	return floor_num % 5 == 0
+
+func _is_shop_floor_num(floor_num: int) -> bool:
+	# Shop appears every 3 floors, but not on boss floors
+	return floor_num % 3 == 0 and not _is_boss_floor_num(floor_num)
 
 func _get_xp_for_next_level() -> int:
 	# Formula: 30 * level^1.5, rounded
@@ -121,10 +154,13 @@ func _add_log_message(msg: String) -> void:
 
 func _generate_floor() -> void:
 	is_boss_floor = _is_boss_floor_num(current_floor)
+	var is_shop_floor: bool = _is_shop_floor_num(current_floor)
 	boss_defeated = false
 	boss_stairs_pos = Vector2i(-1, -1)
 	turn_count = 0
-
+	in_shop = false
+	has_visited_shop_this_floor = false
+	
 	if is_boss_floor:
 		map_data = generator.generate_boss_floor()
 		player_pos = generator.get_boss_player_start()
@@ -136,8 +172,21 @@ func _generate_floor() -> void:
 		_update_visibility()
 		_update_camera()
 		_add_log_message("=== BOSS FLOOR " + str(current_floor) + " ===")
+	elif is_shop_floor:
+		# Generate a special shop floor with fewer enemies
+		map_data = generator.generate(60, 60, true)
+		player_pos = map_data.get_random_floor_tile()
+		revealed.clear()
+		explored.clear()
+		stairs_found.clear()
+		# Spawn fewer enemies on shop floors
+		_spawn_enemies_shop_floor()
+		_spawn_items()
+		_update_visibility()
+		_update_camera()
+		_add_log_message("Floor " + str(current_floor) + " - Shop Available!")
 	else:
-		map_data = generator.generate(60, 60)
+		map_data = generator.generate(60, 60, false)
 		player_pos = map_data.get_random_floor_tile()
 		revealed.clear()
 		explored.clear()
@@ -147,6 +196,7 @@ func _generate_floor() -> void:
 		_update_visibility()
 		_update_camera()
 		_add_log_message("Floor " + str(current_floor))
+	
 	queue_redraw()
 
 func _get_types_for_floor(floor_num: int) -> Array:
@@ -204,6 +254,40 @@ func _spawn_enemies() -> void:
 		enemies.append(enemy)
 		occupied[pos] = true
 
+func _spawn_enemies_shop_floor() -> void:
+	enemies.clear()
+	var count: int = 1 + (randi() % 2)  # Only 1-2 enemies on shop floors
+	# Scale count with floor but keep it low
+	count += current_floor / 6
+	count = mini(count, 4)
+	
+	var valid_types: Array = _get_types_for_floor(current_floor)
+	if valid_types.is_empty():
+		return
+
+	var occupied: Dictionary = {}
+	occupied[player_pos] = true
+	
+	for y in range(map_data.height):
+		for x in range(map_data.width):
+			if map_data.get_tile(x, y) == TileMapData.Tile.STAIRS_DOWN:
+				occupied[Vector2i(x, y)] = true
+
+	var attempts: int = 0
+	while enemies.size() < count and attempts < 200:
+		attempts += 1
+		var pos: Vector2i = map_data.get_random_floor_tile()
+		if occupied.has(pos):
+			continue
+		# Don't spawn too close to player
+		var dist: int = absi(pos.x - player_pos.x) + absi(pos.y - player_pos.y)
+		if dist < 5:
+			continue
+		var t: int = valid_types[randi() % valid_types.size()]
+		var enemy: Enemy = Enemy.new()
+		enemy.setup(t, pos)
+		enemies.append(enemy)
+		occupied[pos] = true
 func _spawn_boss() -> void:
 	enemies.clear()
 	items.clear()
@@ -350,6 +434,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		if restart:
 			_restart_game()
 		return
+	
+	# Shop key (S)
+	if event is InputEventKey and event.is_pressed():
+		var key_event: InputEventKey = event as InputEventKey
+		if key_event.keycode == KEY_S and _is_shop_floor_num(current_floor) and not has_visited_shop_this_floor:
+			_show_shop()
+			return
 
 	var dir: Vector2i = Vector2i.ZERO
 
@@ -443,6 +534,11 @@ func _try_move(dir: Vector2i) -> void:
 	_check_item_pickup()
 
 	# Check stairs
+	# Check for shop tile
+	var shop_tile: int = map_data.get_tile(player_pos.x, player_pos.y)
+	if shop_tile == TileMapData.Tile.SHOP:
+		_show_shop()
+		return
 	var tile: int = map_data.get_tile(player_pos.x, player_pos.y)
 	if tile == TileMapData.Tile.STAIRS_DOWN:
 		current_floor += 1
@@ -613,9 +709,19 @@ func _try_ranged_attack(enemy: Enemy) -> bool:
 	damage_flash_timer = 0.2
 	_add_log_message(enemy.name_str + " hurls fire for " + str(dmg) + "!")
 	if player_hp <= 0:
-		player_hp = 0
-		game_over = true
-		score = _calculate_score()
+			# Check for revival amulet
+			if persistent_data.permanent_upgrades.get("revival_amulet", false):
+				# Use revival amulet
+				persistent_data.permanent_upgrades["revival_amulet"] = false
+				player_hp = 1
+				_add_log_message("Revival Amulet saved you! You have 1 HP.")
+				queue_redraw()
+				return true
+			
+			player_hp = 0
+			game_over = true
+			score = _calculate_score()
+			_save_on_death()
 	return true
 
 func _lich_summon(lich: Enemy) -> void:
@@ -637,9 +743,19 @@ func _enemy_attack(enemy: Enemy) -> void:
 	damage_flash_timer = 0.2
 	_add_log_message(enemy.name_str + " hits you for " + str(dmg) + "!")
 	if player_hp <= 0:
-		player_hp = 0
-		game_over = true
-		score = _calculate_score()
+			# Check for revival amulet
+			if persistent_data.permanent_upgrades.get("revival_amulet", false):
+				# Use revival amulet
+				persistent_data.permanent_upgrades["revival_amulet"] = false
+				player_hp = 1
+				_add_log_message("Revival Amulet saved you! You have 1 HP.")
+				queue_redraw()
+				return
+			
+			player_hp = 0
+			game_over = true
+			score = _calculate_score()
+			_save_on_death()
 
 func _get_chase_dir(from: Vector2i, to: Vector2i, can_phase: bool = false) -> Vector2i:
 	var dx: int = to.x - from.x
@@ -720,7 +836,112 @@ func _restart_game() -> void:
 	is_boss_floor = false
 	boss_defeated = false
 	turn_count = 0
+	in_shop = false
+	has_visited_shop_this_floor = false
 	_generate_floor()
+# === SHOP HANDLERS ===
+
+func _show_shop() -> void:
+	if not _is_shop_floor_num(current_floor):
+		return
+	
+	if has_visited_shop_this_floor:
+		_add_log_message("You've already visited the shop this floor.")
+		return
+	
+	has_visited_shop_this_floor = true
+	
+	# Calculate total gold available (collected + persistent)
+	var total_gold: int = gold_collected + persistent_data.total_gold_earned
+	
+	# Get random shop items
+	shop_items = shop_system.get_random_shop_items(3)
+	
+	# Show shop UI
+	shop_ui.show_shop(total_gold, shop_items)
+
+func _on_shop_item_purchased(item_type: int) -> void:
+	# Apply item effects based on type
+	match item_type:
+		ShopSystem.ShopItemType.HEALTH_POTION:
+			var heal: int = mini(8, player_max_hp - player_hp)
+			player_hp += heal
+			_add_log_message("Used Health Potion! +" + str(heal) + " HP")
+			
+		ShopSystem.ShopItemType.STRENGTH_POTION:
+			player_atk += 1
+			_add_log_message("Used Strength Potion! +1 ATK")
+			
+		ShopSystem.ShopItemType.SHIELD_SCROLL:
+			player_def += 1
+			_add_log_message("Used Shield Scroll! +1 DEF")
+			
+		ShopSystem.ShopItemType.GOLD_BAG:
+			gold_collected += 20
+			_add_log_message("Got Gold Bag! +20 Gold")
+			
+		ShopSystem.ShopItemType.REVIVAL_AMULET:
+			# Store revival amulet in persistent data for later use
+			persistent_data.permanent_upgrades["revival_amulet"] = true
+			_add_log_message("Bought Revival Amulet! Will revive you if you die.")
+			
+		ShopSystem.ShopItemType.TELEPORT_SCROLL:
+			# Teleport to stairs immediately
+			_teleport_to_stairs()
+			
+		ShopSystem.ShopItemType.BLESSING_SCROLL:
+			player_xp += 50
+			_add_log_message("Used Blessing Scroll! +50 XP")
+			_check_level_up()
+	
+	# Update score and redraw
+	score = _calculate_score()
+	queue_redraw()
+
+func _on_shop_closed() -> void:
+	# Save any gold spent to persistent data
+	# The shop UI handles gold deduction, so we need to sync with persistent data
+	var current_total_gold: int = shop_ui.current_gold
+	persistent_data.total_gold_earned = maxi(0, current_total_gold - gold_collected)
+	persistent_data.save()
+	
+	# Continue gameplay
+	queue_redraw()
+
+func _teleport_to_stairs() -> void:
+	# Find stairs position
+	var stairs_pos: Vector2i = Vector2i(-1, -1)
+	for y in range(map_data.height):
+		for x in range(map_data.width):
+			if map_data.get_tile(x, y) == TileMapData.Tile.STAIRS_DOWN:
+				stairs_pos = Vector2i(x, y)
+				break
+		if stairs_pos.x != -1:
+			break
+	
+	if stairs_pos.x != -1:
+		player_pos = stairs_pos
+		_update_visibility()
+		_update_camera()
+		_add_log_message("Teleported to stairs!")
+		queue_redraw()
+	else:
+		_add_log_message("No stairs found!")
+
+# Save player progress on death
+func _save_on_death() -> void:
+	# Add collected gold to persistent total
+	persistent_data.total_gold_earned += gold_collected
+	gold_collected = 0
+	
+	# Update highest floor reached
+	persistent_data.update_highest_floor(current_floor)
+	
+	# Increment games played
+	persistent_data.games_played += 1
+	
+	# Save everything
+	persistent_data.save()
 
 func _update_camera() -> void:
 	camera_offset = Vector2(
@@ -777,6 +998,8 @@ func _draw() -> void:
 					tile_color = color_floor
 			elif tile == TileMapData.Tile.DOOR:
 				tile_color = Color(0.6, 0.4, 0.1)
+			elif tile == TileMapData.Tile.SHOP:
+				tile_color = Color(0.8, 0.7, 0.2)  # Gold/yellow color for shop
 			else:
 				tile_color = color_floor
 
@@ -1103,6 +1326,8 @@ func _draw_minimap() -> void:
 		elif tile == TileMapData.Tile.STAIRS_DOWN:
 			if stairs_found.has(tpos):
 				draw_rect(Rect2(px, py, ps + 1.0, ps + 1.0), Color(0.0, 0.9, 0.9))
+		elif tile == TileMapData.Tile.SHOP:
+			draw_rect(Rect2(px, py, ps + 1.0, ps + 1.0), Color(0.8, 0.7, 0.2))  # Gold/yellow for shop
 
 	# Enemy dots on minimap (visible ones, bosses always if on boss floor)
 	for enemy in enemies:

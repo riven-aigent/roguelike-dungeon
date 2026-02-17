@@ -48,6 +48,19 @@ Boss floors are single-room arenas. Defeat the boss to reveal stairs and claim a
 - **Shield Scroll** (blue square): +1 DEF permanently
 - **Gold** (yellow dot): +10 score
 
+### Shop System
+
+- **Shop Floors**: Every 3rd floor (except boss floors) contains a shop
+- **Shop Tile**: Look for a special shop tile in one of the rooms - step on it to access the shop
+- **Available Items**:
+  - **Health Potion**: Restores 8 HP (25g)
+  - **Strength Potion**: +1 ATK permanently (40g)
+  - **Shield Scroll**: +1 DEF permanently (40g)
+  - **Gold Bag**: Gain 20 gold (15g)
+  - **Revival Amulet**: Revive with 1 HP if you die (one-time use, unlocked after reaching certain floors) (100g)
+  - **Teleport Scroll**: Instantly teleport to stairs (unlocked after reaching certain floors) (60g)
+  - **Blessing Scroll**: Gain 50 XP instantly (unlocked after reaching certain floors) (75g)
+- **Persistent Progression**: Gold carries over between runs, and special items unlock permanently as you progress
 ## Controls
 - **WASD / Arrow Keys**: Move & attack
 - **Swipe**: Touch movement (mobile)
@@ -64,3 +77,4 @@ Boss floors are single-room arenas. Defeat the boss to reveal stairs and claim a
 2. ✅ Enemies (4 types), bump combat, AI
 3. ✅ Items, fog of war, score, minimap
 4. ✅ XP/leveling, 3 new enemies, boss floors, message log
+5. ✅ Shop system with interactive shop tiles, persistent progression, and unlockable items
