@@ -138,7 +138,8 @@ func _ready() -> void:
 	shop_system = ShopSystem.new()
 	shop_system.initialize(persistent_data)
 	# Create shop UI instance
-	shop_ui = ShopUI.new()
+	var shop_ui_scene = preload("res://scenes/shop.tscn")
+	shop_ui = shop_ui_scene.instantiate()
 	add_child(shop_ui)
 	shop_ui.hide()
 	
