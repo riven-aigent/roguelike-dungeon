@@ -32,7 +32,14 @@ jobs:
       - name: Web Build
         run: |
           mkdir -v -p build/web
+          echo "Checking export templates..."
+          ls -la ~/.local/share/godot/export_templates/
+          echo "Checking project files..."
+          ls -la
+          echo "Starting export..."
           godot --headless --verbose --export-release "Web" build/web/index.html
+          echo "Export completed. Checking output..."
+          ls -la build/web/
 
       - name: Install rsync
         run: |
