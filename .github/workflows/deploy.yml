@@ -16,6 +16,14 @@ jobs:
         with:
           lfs: true
 
+      - name: Download Export Templates
+        run: |
+          mkdir -v -p ~/.local/share/godot/export_templates
+          wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_export_templates.tpz
+          unzip -q Godot_v4.6-stable_export_templates.tpz -d ~/.local/share/godot/export_templates
+          mv ~/.local/share/godot/export_templates/templates ~/.local/share/godot/export_templates/4.6.stable
+          rm Godot_v4.6-stable_export_templates.tpz
+
       - name: Web Build
         run: |
           mkdir -v -p web_build
