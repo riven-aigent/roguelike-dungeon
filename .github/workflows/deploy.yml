@@ -24,13 +24,13 @@ jobs:
 
       - name: Web Build
         run: |
-          mkdir -p web
-          godot --headless --export "Web" web/
+          mkdir -p web_build
+          godot --headless --export-release "Web" web_build/index.html
           echo "Export completed. Checking output..."
-          ls -la web/
+          ls -la web_build/
 
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@releases/v4
         with:
           branch: gh-pages
-          folder: web
+          folder: web_build
