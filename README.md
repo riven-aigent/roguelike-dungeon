@@ -17,20 +17,40 @@ A turn-based roguelike dungeon crawler built with Godot 4.6. Infinite procedural
 ### Combat & Progression
 - Turn-based bump combat with ATK/DEF stats
 - **XP & Leveling system**: Earn XP from kills, level up for +5 HP (full heal) and +1 ATK
+- **Critical hits**: 5% base chance, 1.5x damage multiplier
 - Score tracking (kills, gold, floor depth)
 - Permadeath with full stats on game over
 
-### Enemies (7 Regular + 3 Bosses)
+### Equipment System
+Find and equip items dropped by enemies or found in the dungeon:
+
+| Equipment | Slot | Effect |
+|-----------|------|--------|
+| Iron Sword | Weapon | +2 ATK |
+| Battle Axe | Weapon | +3 ATK, -1 DEF |
+| Shadow Dagger | Weapon | +1 ATK, +10% Crit |
+| Iron Shield | Armor | +2 DEF |
+| Chain Mail | Armor | +3 DEF |
+| Ring of Power | Accessory | +1 ATK, +1 DEF |
+| Amulet of Life | Accessory | +10 Max HP |
+
+- Swap equipment by picking up new items
+- Old equipment drops on the ground when swapped
+
+### Enemies (10 Regular + 3 Bosses)
 
 | Enemy | Stats | Floor | Special |
 |-------|-------|-------|---------|
 | Slime | 3HP/1ATK/0DEF | 1+ | Basic |
 | Bat | 2HP/2ATK/0DEF | 1+ | Fast but fragile |
 | Skeleton | 5HP/2ATK/1DEF | 3+ | Armored |
+| Spider | 4HP/2ATK/0DEF | 3+ | Web attack slows player |
 | Wraith | 4HP/3ATK/0DEF | 4+ | Phases through walls |
 | Orc | 8HP/3ATK/2DEF | 5+ | Tough |
-| Fire Imp | 3HP/4ATK/0DEF | 6+ | Ranged fireball (2-3 tiles) |
-| Golem | 15HP/2ATK/4DEF | 8+ | Slow (moves every other turn) |
+| Fire Imp | 3HP/4ATK/0DEF | 6+ | Ranged fireball, 30% burn |
+| Ghost | 3HP/5ATK/0DEF | 7+ | Invisible until adjacent |
+| Golem | 15HP/2ATK/4DEF | 8+ | Slow (every other turn) |
+| Mimic | 12HP/4ATK/2DEF | 9+ | Disguised as gold, drops loot |
 
 ### Boss Floors (Every 5th Floor)
 
@@ -42,14 +62,28 @@ A turn-based roguelike dungeon crawler built with Godot 4.6. Infinite procedural
 
 Boss floors are single-room arenas. Defeat the boss to reveal stairs and claim a guaranteed Strength Potion.
 
+### Status Effects
+- **Poison**: 1 damage per turn for 5 turns (from Poison Dart traps, Spider attacks)
+- **Burn**: 2 damage per turn for 3 turns (from Fire Imps, Dragon)
+- **Slow**: Movement slowed for 3 turns (from Spider webs)
+
+### Traps
+| Trap | Effect |
+|------|--------|
+| Spike Trap | 3 damage (one-shot) |
+| Poison Dart | 2 damage + 5 turn poison |
+| Fire Vent | 4 damage + 3 turn burn |
+| Teleport Trap | Random teleportation |
+
 ### Items
 - **Health Potion** (red cross): Restores 8 HP
 - **Strength Potion** (orange arrow): +1 ATK permanently
 - **Shield Scroll** (blue square): +1 DEF permanently
-- **Gold** (yellow dot): +10 score
+- **Gold** (yellow dot): +10 gold
+- **Dungeon Key**: Opens secret rooms (future)
+- **Antidote**: Cures poison status
 
 ### Shop System
-
 - **Shop Floors**: Every 3rd floor (except boss floors) contains a shop
 - **Shop Tile**: Look for a special shop tile in one of the rooms - step on it to access the shop
 - **Available Items**:
@@ -57,10 +91,11 @@ Boss floors are single-room arenas. Defeat the boss to reveal stairs and claim a
   - **Strength Potion**: +1 ATK permanently (40g)
   - **Shield Scroll**: +1 DEF permanently (40g)
   - **Gold Bag**: Gain 20 gold (15g)
-  - **Revival Amulet**: Revive with 1 HP if you die (one-time use, unlocked after reaching certain floors) (100g)
-  - **Teleport Scroll**: Instantly teleport to stairs (unlocked after reaching certain floors) (60g)
-  - **Blessing Scroll**: Gain 50 XP instantly (unlocked after reaching certain floors) (75g)
+  - **Revival Amulet**: Revive with 1 HP if you die (one-time use) (100g)
+  - **Teleport Scroll**: Instantly teleport to stairs (60g)
+  - **Blessing Scroll**: Gain 50 XP instantly (75g)
 - **Persistent Progression**: Gold carries over between runs, and special items unlock permanently as you progress
+
 ## Controls
 - **WASD / Arrow Keys**: Move & attack
 - **Swipe**: Touch movement (mobile)
@@ -77,6 +112,5 @@ Boss floors are single-room arenas. Defeat the boss to reveal stairs and claim a
 2. ✅ Enemies (4 types), bump combat, AI
 3. ✅ Items, fog of war, score, minimap
 4. ✅ XP/leveling, 3 new enemies, boss floors, message log
-5. ✅ Shop system with interactive shop tiles, persistent progression, and unlockable items
-
-<!-- Force rebuild to fix HTML template issue -->
+5. ✅ Shop system with interactive shop tiles, persistent progression
+6. ✅ Equipment system, 4 new enemies, status effects, traps, critical hits
