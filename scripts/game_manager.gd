@@ -2,6 +2,7 @@ extends Node2D
 # Load additional scripts
 const PersistentData = preload("res://scripts/persistent_data.gd")
 const ShopSystem = preload("res://scripts/shop_system.gd")
+const Trap = preload("res://scripts/trap.gd")
 
 const TILE_SIZE := 32
 # Persistent progression
@@ -32,10 +33,35 @@ var player_atk: int = 3
 var player_def: int = 1
 var kill_count: int = 0
 
+# Base stats (before equipment)
+var base_atk: int = 3
+var base_def: int = 1
+var base_max_hp: int = 20
+
+# Equipment
+var equipped_weapon: Item = null
+var equipped_armor: Item = null
+var equipped_accessory: Item = null
+var crit_chance: float = 0.05  # Base 5% crit
+var crit_multiplier: float = 1.5
+
+# Status effects
+var poison_turns: int = 0
+var burn_turns: int = 0
+var slow_turns: int = 0
+var poison_damage_flash: float = 0.0
+var burn_damage_flash: float = 0.0
+
 # XP & Leveling
 var player_xp: int = 0
 var player_level: int = 1
 var levelup_flash_timer: float = 0.0
+
+# Keys for secret rooms
+var keys: int = 0
+
+# Traps
+var traps: Array = []  # Array of Trap
 
 # Enemies
 var enemies: Array = []  # Array of Enemy
@@ -43,7 +69,6 @@ var enemies: Array = []  # Array of Enemy
 # Items
 var items: Array = []  # Array of Item
 var gold_collected: int = 0
-# Shop UI reference
 var shop_ui: ShopUI
 
 # Score
@@ -122,8 +147,45 @@ func _ready() -> void:
 	shop_ui.shop_closed.connect(_on_shop_closed)
 	
 	generator = DungeonGenerator.new()
+	_apply_persistent_upgrades()
 	_generate_floor()
 
+func _apply_persistent_upgrades() -> void:
+	# Apply permanent upgrades from persistent data
+	base_max_hp = 20 + persistent_data.permanent_upgrades.get("max_hp_bonus", 0) * 5
+	player_max_hp = base_max_hp
+	player_hp = player_max_hp
+	base_atk = 3 + persistent_data.permanent_upgrades.get("atk_bonus", 0)
+	base_def = 1 + persistent_data.permanent_upgrades.get("def_bonus", 0)
+	player_atk = base_atk
+	player_def = base_def
+	gold_collected = persistent_data.permanent_upgrades.get("starting_gold", 0)
+	_recalculate_stats()
+
+func _recalculate_stats() -> void:
+	# Recalculate total stats from base + equipment
+	player_atk = base_atk
+	player_def = base_def
+	player_max_hp = base_max_hp
+	crit_chance = 0.05  # Base 5%
+	
+	if equipped_weapon:
+		player_atk += equipped_weapon.atk_bonus
+		player_def += equipped_weapon.def_bonus
+		crit_chance += equipped_weapon.crit_bonus
+	if equipped_armor:
+		player_atk += equipped_armor.atk_bonus
+		player_def += equipped_armor.def_bonus
+		player_max_hp += equipped_armor.hp_bonus
+	if equipped_accessory:
+		player_atk += equipped_accessory.atk_bonus
+		player_def += equipped_accessory.def_bonus
+		player_max_hp += equipped_accessory.hp_bonus
+		crit_chance += equipped_accessory.crit_bonus
+	
+	# Cap HP if it decreased
+	if player_hp > player_max_hp:
+		player_hp = player_max_hp
 func _is_boss_floor_num(floor_num: int) -> bool:
 	return floor_num % 5 == 0
 
@@ -140,11 +202,14 @@ func _check_level_up() -> void:
 	while player_xp >= needed and player_level < 99:
 		player_xp -= needed
 		player_level += 1
-		player_max_hp += 5
+		base_max_hp += 5
+		player_max_hp = base_max_hp
 		player_hp = player_max_hp  # Heal to full
-		player_atk += 1
+		base_atk += 1
+		player_atk = base_atk
 		levelup_flash_timer = 1.5
 		_add_log_message("LEVEL UP! Now level " + str(player_level) + "!")
+		_recalculate_stats()
 		needed = _get_xp_for_next_level()
 
 func _add_log_message(msg: String) -> void:
@@ -160,6 +225,10 @@ func _generate_floor() -> void:
 	turn_count = 0
 	in_shop = false
 	has_visited_shop_this_floor = false
+	traps.clear()
+	poison_turns = 0
+	burn_turns = 0
+	slow_turns = 0
 	
 	if is_boss_floor:
 		map_data = generator.generate_boss_floor()
@@ -182,6 +251,8 @@ func _generate_floor() -> void:
 		# Spawn fewer enemies on shop floors
 		_spawn_enemies_shop_floor()
 		_spawn_items()
+		_spawn_traps()
+		_spawn_secret_room_items()
 		_update_visibility()
 		_update_camera()
 		_add_log_message("Floor " + str(current_floor) + " - Shop Available!")
@@ -193,6 +264,8 @@ func _generate_floor() -> void:
 		stairs_found.clear()
 		_spawn_enemies()
 		_spawn_items()
+		_spawn_traps()
+		_spawn_secret_room_items()
 		_update_visibility()
 		_update_camera()
 		_add_log_message("Floor " + str(current_floor))
@@ -206,14 +279,19 @@ func _get_types_for_floor(floor_num: int) -> Array:
 		types.append(Enemy.Type.BAT)
 	if floor_num >= 3:
 		types.append(Enemy.Type.SKELETON)
+		types.append(Enemy.Type.SPIDER)
 	if floor_num >= 4:
 		types.append(Enemy.Type.WRAITH)
 	if floor_num >= 5:
 		types.append(Enemy.Type.ORC)
 	if floor_num >= 6:
 		types.append(Enemy.Type.FIRE_IMP)
+	if floor_num >= 7:
+		types.append(Enemy.Type.GHOST)
 	if floor_num >= 8:
 		types.append(Enemy.Type.GOLEM)
+	if floor_num >= 9:
+		types.append(Enemy.Type.MIMIC)
 	# Phase out weak enemies
 	if floor_num > 3:
 		types.erase(Enemy.Type.SLIME)
@@ -303,37 +381,57 @@ func _spawn_boss() -> void:
 
 	enemies.append(boss)
 
-func _spawn_items() -> void:
-	items.clear()
-	var count: int = 2 + (randi() % 3)  # 2-4 items
 
-	var occupied: Dictionary = {}
-	occupied[player_pos] = true
-	for enemy in enemies:
-		occupied[enemy.pos] = true
-	for y in range(map_data.height):
-		for x in range(map_data.width):
-			if map_data.get_tile(x, y) == TileMapData.Tile.STAIRS_DOWN:
-				occupied[Vector2i(x, y)] = true
 
-	var weighted: Array = [
-		Item.Type.HEALTH_POTION, Item.Type.HEALTH_POTION,
-		Item.Type.GOLD, Item.Type.GOLD, Item.Type.GOLD,
-		Item.Type.STRENGTH_POTION,
-		Item.Type.SHIELD_SCROLL
-	]
+func _spawn_traps() -> void:
+	traps.clear()
+	# More traps on higher floors
+	var trap_count: int = 1 + current_floor / 4
+	trap_count = mini(trap_count, 5)
+	
+	if trap_count < 1:
+		return
+	
+	var trap_positions: Array[Vector2i] = generator.get_trap_positions(trap_count, current_floor)
+	
+	for pos in trap_positions:
+		var trap_types: Array = [Trap.Type.SPIKES, Trap.Type.SPIKES, Trap.Type.POISON_DART]
+		if current_floor >= 5:
+			trap_types.append(Trap.Type.FIRE_VENT)
+		if current_floor >= 8:
+			trap_types.append(Trap.Type.TELEPORT)
+		
+		var trap: Trap = Trap.new()
+		trap.setup(trap_types[randi() % trap_types.size()], pos)
+		traps.append(trap)
 
-	var attempts: int = 0
-	while items.size() < count and attempts < 200:
-		attempts += 1
-		var pos: Vector2i = map_data.get_random_floor_tile()
-		if occupied.has(pos):
-			continue
-		var t: int = weighted[randi() % weighted.size()]
-		var item: Item = Item.new()
-		item.setup(t, pos)
-		items.append(item)
-		occupied[pos] = true
+func _spawn_secret_room_items() -> void:
+	# Spawn bonus items in secret rooms
+	var secret_positions: Array[Vector2i] = generator.get_secret_room_positions()
+	
+	for secret_pos in secret_positions:
+		# Spawn 2-3 good items in each secret room
+		var item_count: int = 2 + randi() % 2
+		var offsets: Array[Vector2i] = [
+			Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), 
+			Vector2i(-1, 0), Vector2i(0, -1), Vector2i(1, 1)
+		]
+		offsets.shuffle()
+		
+		var good_items: Array = [
+			Item.Type.STRENGTH_POTION, Item.Type.STRENGTH_POTION,
+			Item.Type.SHIELD_SCROLL,
+			Item.Type.HEALTH_POTION, Item.Type.HEALTH_POTION,
+			Item.Type.GOLD, Item.Type.GOLD, Item.Type.GOLD,
+			Item.Type.KEY, Item.Type.BOMB
+		]
+		
+		for i in range(mini(item_count, offsets.size())):
+			var item_pos: Vector2i = secret_pos + offsets[i]
+			if map_data.get_tile(item_pos.x, item_pos.y) == TileMapData.Tile.SECRET_ROOM:
+				var item: Item = Item.new()
+				item.setup(good_items[randi() % good_items.size()], item_pos)
+				items.append(item)
 
 func _update_visibility() -> void:
 	revealed.clear()
@@ -511,90 +609,40 @@ func _unhandled_input(event: InputEvent) -> void:
 	if dir != Vector2i.ZERO:
 		_try_move(dir)
 
-func _try_move(dir: Vector2i) -> void:
-	var new_pos: Vector2i = player_pos + dir
 
-	if not map_data.is_walkable(new_pos.x, new_pos.y):
-		return
-
-	# Check if enemy is at new_pos (bump attack)
-	var target_enemy: Enemy = _get_enemy_at(new_pos)
-	if target_enemy != null:
-		_player_attack(target_enemy)
-		turn_count += 1
-		_enemy_turn()
-		_update_visibility()
-		_update_camera()
-		queue_redraw()
-		return
-
-	player_pos = new_pos
-
-	# Check for items at this position
-	_check_item_pickup()
-
-	# Check stairs
-	# Check for shop tile
-	var shop_tile: int = map_data.get_tile(player_pos.x, player_pos.y)
-	if shop_tile == TileMapData.Tile.SHOP:
-		_show_shop()
-		return
-	var tile: int = map_data.get_tile(player_pos.x, player_pos.y)
-	if tile == TileMapData.Tile.STAIRS_DOWN:
-		current_floor += 1
-		_generate_floor()
-		return
-
-	# Enemy turn after player moves
-	turn_count += 1
-	_enemy_turn()
-	_update_visibility()
-	_update_camera()
-	score = _calculate_score()
-	queue_redraw()
-
-func _check_item_pickup() -> void:
-	for item in items:
-		if item.collected:
-			continue
-		if item.pos == player_pos:
-			item.collected = true
-			match item.type:
-				Item.Type.HEALTH_POTION:
-					var heal: int = mini(8, player_max_hp - player_hp)
-					player_hp += heal
-					_add_log_message("Picked up Health Potion! +" + str(heal) + " HP")
-				Item.Type.STRENGTH_POTION:
-					player_atk += 1
-					_add_log_message("Picked up Strength Potion! +1 ATK")
-				Item.Type.SHIELD_SCROLL:
-					player_def += 1
-					_add_log_message("Picked up Shield Scroll! +1 DEF")
-				Item.Type.GOLD:
-					gold_collected += 10
-					_add_log_message("Picked up Gold! +10 score")
+func _process_status_effects() -> void:
+	# Poison damage
+	if poison_turns > 0:
+		var poison_dmg: int = 1
+		player_hp -= poison_dmg
+		poison_turns -= 1
+		poison_damage_flash = 0.3
+		_add_log_message("Poison deals " + str(poison_dmg) + " damage! (" + str(poison_turns) + " turns left)")
+		if player_hp <= 0:
+			player_hp = 0
+			game_over = true
 			score = _calculate_score()
-			return
+			_save_on_death()
+	
+	# Burn damage
+	if burn_turns > 0:
+		var burn_dmg: int = 2
+		player_hp -= burn_dmg
+		burn_turns -= 1
+		burn_damage_flash = 0.3
+		_add_log_message("Fire burns for " + str(burn_dmg) + " damage! (" + str(burn_turns) + " turns left)")
+		if player_hp <= 0:
+			player_hp = 0
+			game_over = true
+			score = _calculate_score()
+			_save_on_death()
+	
+	# Slow effect
+	if slow_turns > 0:
+		slow_turns -= 1
+		if slow_turns == 0:
+			_add_log_message("Slow effect wore off!")
 
-func _player_attack(enemy: Enemy) -> void:
-	var dmg: int = enemy.take_damage(player_atk)
-	if enemy.alive:
-		_add_log_message("Hit " + enemy.name_str + " for " + str(dmg) + "!")
-		# Check Giant Slime split at 50% HP
-		if enemy.type == Enemy.Type.BOSS_SLIME and not enemy.has_split:
-			if enemy.hp <= enemy.max_hp / 2:
-				enemy.has_split = true
-				_boss_slime_split(enemy)
-	else:
-		_add_log_message("Killed " + enemy.name_str + "! (+" + str(dmg) + " dmg)")
-		kill_count += 1
-		player_xp += enemy.xp_value
-		_add_log_message("+" + str(enemy.xp_value) + " XP")
-		_check_level_up()
-		score = _calculate_score()
-		# Boss defeated: spawn stairs + drop strength potion
-		if enemy.is_boss:
-			_on_boss_defeated()
 
 func _boss_slime_split(boss: Enemy) -> void:
 	_add_log_message("Giant Slime splits into smaller slimes!")
@@ -686,43 +734,7 @@ func _process_single_enemy_turn(enemy: Enemy) -> void:
 		if map_data.is_walkable(new_pos.x, new_pos.y) and _get_enemy_at(new_pos) == null:
 			enemy.pos = new_pos
 
-func _try_ranged_attack(enemy: Enemy) -> bool:
-	# Check if player is in a cardinal direction, 2-3 tiles away
-	var dx: int = player_pos.x - enemy.pos.x
-	var dy: int = player_pos.y - enemy.pos.y
-	if dx != 0 and dy != 0:
-		return false  # Not cardinal
-	var dist: int = absi(dx) + absi(dy)
-	if dist < 2 or dist > 3:
-		return false
-	# Check line of sight (no walls in between)
-	var step_x: int = signi(dx)
-	var step_y: int = signi(dy)
-	var check_pos: Vector2i = enemy.pos
-	for _i in range(dist - 1):
-		check_pos += Vector2i(step_x, step_y)
-		if not map_data.is_walkable(check_pos.x, check_pos.y):
-			return false
-	# Fire! Deal atk damage
-	var dmg: int = maxi(1, enemy.atk - player_def)
-	player_hp -= dmg
-	damage_flash_timer = 0.2
-	_add_log_message(enemy.name_str + " hurls fire for " + str(dmg) + "!")
-	if player_hp <= 0:
-			# Check for revival amulet
-			if persistent_data.permanent_upgrades.get("revival_amulet", false):
-				# Use revival amulet
-				persistent_data.permanent_upgrades["revival_amulet"] = false
-				player_hp = 1
-				_add_log_message("Revival Amulet saved you! You have 1 HP.")
-				queue_redraw()
-				return true
-			
-			player_hp = 0
-			game_over = true
-			score = _calculate_score()
-			_save_on_death()
-	return true
+
 
 func _lich_summon(lich: Enemy) -> void:
 	# Summon a skeleton near the lich
@@ -737,25 +749,7 @@ func _lich_summon(lich: Enemy) -> void:
 			_add_log_message("Lich summons a Skeleton!")
 			return
 
-func _enemy_attack(enemy: Enemy) -> void:
-	var dmg: int = maxi(1, enemy.atk - player_def)
-	player_hp -= dmg
-	damage_flash_timer = 0.2
-	_add_log_message(enemy.name_str + " hits you for " + str(dmg) + "!")
-	if player_hp <= 0:
-			# Check for revival amulet
-			if persistent_data.permanent_upgrades.get("revival_amulet", false):
-				# Use revival amulet
-				persistent_data.permanent_upgrades["revival_amulet"] = false
-				player_hp = 1
-				_add_log_message("Revival Amulet saved you! You have 1 HP.")
-				queue_redraw()
-				return
-			
-			player_hp = 0
-			game_over = true
-			score = _calculate_score()
-			_save_on_death()
+
 
 func _get_chase_dir(from: Vector2i, to: Vector2i, can_phase: bool = false) -> Vector2i:
 	var dx: int = to.x - from.x
@@ -1042,16 +1036,7 @@ func _draw() -> void:
 					Vector2(icx - s, icy + s * 0.4)
 				])
 				draw_colored_polygon(pts, icolor)
-			Item.Type.SHIELD_SCROLL:
-				var s: float = float(TILE_SIZE) * 0.28
-				draw_rect(Rect2(icx - s, icy - s, s * 2.0, s * 2.0), icolor)
-				draw_rect(Rect2(icx - s * 0.6, icy - s * 0.6, s * 1.2, s * 1.2), Color(0.15, 0.25, 0.5))
-			Item.Type.GOLD:
-				draw_circle(Vector2(icx, icy), float(TILE_SIZE) * 0.22, icolor)
 
-	# Draw enemies (only if visible)
-	for enemy in enemies:
-		if not enemy.alive:
 			continue
 		if not _is_visible(enemy.pos):
 			continue
@@ -1081,21 +1066,7 @@ func _draw() -> void:
 			Enemy.Type.SKELETON:
 				var s: float = float(TILE_SIZE) * 0.3
 				draw_rect(Rect2(ecx - s, ecy - s, s * 2.0, s * 2.0), ecolor)
-			Enemy.Type.ORC:
-				draw_circle(Vector2(ecx, ecy), float(TILE_SIZE) * 0.42, ecolor)
-			Enemy.Type.WRAITH:
-				# Translucent diamond shape
-				var s: float = float(TILE_SIZE) * 0.38
-				var pts: PackedVector2Array = PackedVector2Array([
-					Vector2(ecx, ecy - s),
-					Vector2(ecx + s * 0.7, ecy),
-					Vector2(ecx, ecy + s),
-					Vector2(ecx - s * 0.7, ecy)
-				])
-				draw_colored_polygon(pts, Color(ecolor.r, ecolor.g, ecolor.b, 0.6))
-				# Inner glow
-				draw_circle(Vector2(ecx, ecy), float(TILE_SIZE) * 0.15, Color(0.5, 0.7, 1.0, 0.4))
-			Enemy.Type.FIRE_IMP:
+
 				# Triangle pointing up (fire shape)
 				var s: float = float(TILE_SIZE) * 0.35
 				var pts: PackedVector2Array = PackedVector2Array([
@@ -1226,11 +1197,7 @@ func _draw() -> void:
 	draw_rect(Rect2(bar_start_x, xp_bar_y, bar_w, 10.0), Color(0.1, 0.1, 0.2))
 	draw_rect(Rect2(bar_start_x, xp_bar_y, bar_w * xp_ratio, 10.0), Color(0.3, 0.5, 1.0))
 
-	# ATK/DEF + Gold + Kills on line 3
-	var stat_text: String = "ATK:" + str(player_atk) + " DEF:" + str(player_def) + "  Kills:" + str(kill_count)
-	draw_string(ThemeDB.fallback_font, Vector2(10, 70), stat_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.7, 0.7, 0.6))
-	var gold_text: String = "Gold:" + str(gold_collected)
-	draw_string(ThemeDB.fallback_font, Vector2(260, 70), gold_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1.0, 0.85, 0.1))
+
 
 	# === MESSAGE LOG ===
 	_draw_message_log(hud_h)
@@ -1407,3 +1374,203 @@ func _draw_dpad() -> void:
 					Vector2(cx - arrow_s * 0.4, cy - arrow_s * 0.7),
 					Vector2(cx - arrow_s * 0.4, cy + arrow_s * 0.7)
 				]), arrow_color)
+
+func _try_move(dir: Vector2i) -> void:
+	# Process status effects at start of turn
+	_process_status_effects()
+	
+	var new_pos: Vector2i = player_pos + dir
+
+	if not map_data.is_walkable(new_pos.x, new_pos.y):
+		return
+
+	# Check if enemy is at new_pos (bump attack)
+	var target_enemy: Enemy = _get_enemy_at(new_pos)
+	if target_enemy != null:
+		_player_attack(target_enemy)
+		turn_count += 1
+		_enemy_turn()
+		_update_visibility()
+		_update_camera()
+		queue_redraw()
+		return
+
+
+	
+	# Check stairs
+	var tile: int = map_data.get_tile(player_pos.x, player_pos.y)
+	if tile == TileMapData.Tile.STAIRS_DOWN:
+		current_floor += 1
+		_generate_floor()
+		return
+
+	# Enemy turn after player moves
+	turn_count += 1
+	_enemy_turn()
+	_update_visibility()
+	_update_camera()
+
+func _check_item_pickup() -> void:
+	for item in items:
+		if item.collected:
+			continue
+		if item.pos == player_pos:
+			item.collected = true
+			match item.type:
+				Item.Type.HEALTH_POTION:
+					var heal: int = mini(8, player_max_hp - player_hp)
+					player_hp += heal
+					_add_log_message("Picked up Health Potion! +" + str(heal) + " HP")
+				Item.Type.STRENGTH_POTION:
+					base_atk += 1
+					_add_log_message("Picked up Strength Potion! +1 ATK")
+					_recalculate_stats()
+				Item.Type.SHIELD_SCROLL:
+					base_def += 1
+					_add_log_message("Picked up Shield Scroll! +1 DEF")
+					_recalculate_stats()
+				Item.Type.GOLD:
+					gold_collected += 10
+					_add_log_message("Picked up Gold! +10 gold")
+				Item.Type.KEY:
+					keys += 1
+					_add_log_message("Picked up Dungeon Key!")
+				Item.Type.POISON_CURE:
+					poison_turns = 0
+					_add_log_message("Used Antidote! Poison cured!")
+				Item.Type.SWORD, Item.Type.AXE, Item.Type.DAGGER:
+					_equip_item(item, "weapon")
+				Item.Type.SHIELD, Item.Type.ARMOR:
+					_equip_item(item, "armor")
+				Item.Type.RING_POWER, Item.Type.AMULET_LIFE, Item.Type.BOOTS_SPEED:
+					_equip_item(item, "accessory")
+			score = _calculate_score()
+			return
+
+func _equip_item(item: Item, slot: String) -> void:
+	var old_item: Item = null
+	match slot:
+		"weapon":
+			old_item = equipped_weapon
+			equipped_weapon = item
+		"armor":
+			old_item = equipped_armor
+			equipped_armor = item
+		"accessory":
+			old_item = equipped_accessory
+			equipped_accessory = item
+	
+	_recalculate_stats()
+	_add_log_message("Equipped " + item.name_str + "!")
+	
+	if old_item:
+		old_item.pos = player_pos
+		old_item.collected = false
+		items.append(old_item)
+		_add_log_message("Dropped " + old_item.name_str)
+
+func _player_attack(enemy: Enemy) -> void:
+	var is_crit: bool = randf() < crit_chance
+	var damage: int = player_atk
+	if is_crit:
+		damage = int(float(player_atk) * crit_multiplier)
+	
+	var dmg: int = enemy.take_damage(damage)
+	
+	if is_crit:
+		_add_log_message("CRITICAL HIT! " + str(dmg) + " damage!")
+	
+	if enemy.alive:
+		_add_log_message("Hit " + enemy.name_str + " for " + str(dmg) + "!")
+		if enemy.type == Enemy.Type.BOSS_SLIME and not enemy.has_split:
+			if enemy.hp <= enemy.max_hp / 2:
+				enemy.has_split = true
+				_boss_slime_split(enemy)
+	else:
+		_add_log_message("Killed " + enemy.name_str + "!")
+		kill_count += 1
+		player_xp += enemy.xp_value
+		_add_log_message("+" + str(enemy.xp_value) + " XP")
+		_check_level_up()
+		score = _calculate_score()
+		_handle_enemy_drops(enemy)
+		if enemy.is_boss:
+			_on_boss_defeated()
+
+func _handle_enemy_drops(enemy: Enemy) -> void:
+	if enemy.guaranteed_drop >= 0:
+		var drop: Item = Item.new()
+		drop.setup(enemy.guaranteed_drop, enemy.pos)
+		items.append(drop)
+		_add_log_message(enemy.name_str + " dropped " + drop.name_str + "!")
+	elif enemy.drop_chance > 0 and randf() < enemy.drop_chance:
+		var drop_types: Array = []
+		if current_floor >= 3:
+			drop_types.append(Item.Type.SWORD)
+		if current_floor >= 5:
+			drop_types.append(Item.Type.SHIELD)
+			drop_types.append(Item.Type.DAGGER)
+		if current_floor >= 7:
+			drop_types.append(Item.Type.AXE)
+			drop_types.append(Item.Type.ARMOR)
+		if current_floor >= 10:
+			drop_types.append(Item.Type.RING_POWER)
+			drop_types.append(Item.Type.AMULET_LIFE)
+		
+		if drop_types.size() > 0:
+			var drop: Item = Item.new()
+			drop.setup(drop_types[randi() % drop_types.size()], enemy.pos)
+			items.append(drop)
+			_add_log_message(enemy.name_str + " dropped " + drop.name_str + "!")
+
+func _check_traps() -> void:
+	for trap in traps:
+		if trap.triggered:
+			continue
+		if trap.pos == player_pos:
+			trap.visible = true
+			trap.triggered = true
+			_trigger_trap(trap)
+			if trap.is_one_shot():
+				traps.erase(trap)
+			break
+
+func _trigger_trap(trap: Trap) -> void:
+	match trap.type:
+		Trap.Type.SPIKES:
+			var dmg: int = maxi(1, 3 - player_def)
+			player_hp -= dmg
+			damage_flash_timer = 0.3
+			_add_log_message("Spike trap! -" + str(dmg) + " HP")
+		Trap.Type.POISON_DART:
+			var dmg: int = maxi(1, 2 - player_def)
+			player_hp -= dmg
+			poison_turns = 5
+			damage_flash_timer = 0.3
+			_add_log_message("Poison dart! -" + str(dmg) + " HP, poisoned!")
+		Trap.Type.FIRE_VENT:
+			var dmg: int = maxi(1, 4 - player_def)
+			player_hp -= dmg
+			burn_turns = 3
+			damage_flash_timer = 0.3
+			_add_log_message("Fire vent! -" + str(dmg) + " HP, burning!")
+		Trap.Type.TELEPORT:
+			_teleport_random()
+			_add_log_message("Teleport trap! You're somewhere else...")
+	
+	if player_hp <= 0:
+		player_hp = 0
+		game_over = true
+		score = _calculate_score()
+		_save_on_death()
+
+func _teleport_random() -> void:
+	var attempts: int = 0
+	while attempts < 100:
+		attempts += 1
+		var new_pos: Vector2i = map_data.get_random_floor_tile()
+		if _get_enemy_at(new_pos) == null and new_pos != player_pos:
+			player_pos = new_pos
+			_update_visibility()
+			_update_camera()
+			return

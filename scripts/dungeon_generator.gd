@@ -7,6 +7,7 @@ const MAX_DEPTH := 5
 
 var map_data: TileMapData
 var rooms: Array[Rect2i] = []
+var secret_rooms: Array[Rect2i] = []  # Track secret room locations
 
 class BSPLeaf:
 	var rect: Rect2i
@@ -23,6 +24,7 @@ class BSPLeaf:
 func generate(width: int = 60, height: int = 60, is_shop_floor: bool = false) -> TileMapData:
 	map_data = TileMapData.new(width, height)
 	rooms.clear()
+	secret_rooms.clear()
 	
 	var root: BSPLeaf = BSPLeaf.new(Rect2i(1, 1, width - 2, height - 2))
 	
@@ -39,6 +41,10 @@ func generate(width: int = 60, height: int = 60, is_shop_floor: bool = false) ->
 	# Place shop tile if this is a shop floor
 	if is_shop_floor:
 		_place_shop_tile()
+	
+	# Add secret room (30% chance)
+	if randf() < 0.3 and rooms.size() >= 3:
+		_add_secret_room()
 	
 	return map_data
 
@@ -184,3 +190,125 @@ func _carve_v_corridor(y1: int, y2: int, x: int) -> void:
 	for y in range(start_y, end_y + 1):
 		if map_data.get_tile(x, y) == TileMapData.Tile.WALL:
 			map_data.set_tile(x, y, TileMapData.Tile.FLOOR)
+
+func _add_secret_room() -> void:
+	# Find a room to attach a secret room to
+	var room: Rect2i = rooms[randi() % rooms.size()]
+	
+	# Try to find a valid wall to place secret room behind
+	var directions: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+	directions.shuffle()
+	
+	for dir in directions:
+		# Check if there's space for a 4x4 secret room
+		var secret_w: int = 4
+		var secret_h: int = 4
+		var secret_x: int
+		var secret_y: int
+		
+		if dir.x > 0:
+			secret_x = room.position.x + room.size.x + 1
+			secret_y = room.position.y + randi() % maxi(room.size.y - secret_h + 1, 1)
+		elif dir.x < 0:
+			secret_x = room.position.x - secret_w - 1
+			secret_y = room.position.y + randi() % maxi(room.size.y - secret_h + 1, 1)
+		elif dir.y > 0:
+			secret_x = room.position.x + randi() % maxi(room.size.x - secret_w + 1, 1)
+			secret_y = room.position.y + room.size.y + 1
+		else:
+			secret_x = room.position.x + randi() % maxi(room.size.x - secret_w + 1, 1)
+			secret_y = room.position.y - secret_h - 1
+		
+		# Validate secret room position
+		if secret_x < 2 or secret_x + secret_w >= map_data.width - 2:
+			continue
+		if secret_y < 2 or secret_y + secret_h >= map_data.height - 2:
+			continue
+		
+		# Check if area is all walls (not overlapping existing rooms)
+		var valid: bool = true
+		for y in range(secret_y - 1, secret_y + secret_h + 2):
+			for x in range(secret_x - 1, secret_x + secret_w + 2):
+				if map_data.get_tile(x, y) != TileMapData.Tile.WALL:
+					valid = false
+					break
+			if not valid:
+				break
+		
+		if not valid:
+			continue
+		
+		# Carve secret room
+		for y in range(secret_y, secret_y + secret_h):
+			for x in range(secret_x, secret_x + secret_w):
+				map_data.set_tile(x, y, TileMapData.Tile.SECRET_ROOM)
+		
+		# Place secret wall (looks like wall, but can be opened)
+		var wall_x: int
+		var wall_y: int
+		if dir.x > 0:
+			wall_x = room.position.x + room.size.x
+			wall_y = secret_y + secret_h / 2
+		elif dir.x < 0:
+			wall_x = room.position.x - 1
+			wall_y = secret_y + secret_h / 2
+		elif dir.y > 0:
+			wall_x = secret_x + secret_w / 2
+			wall_y = room.position.y + room.size.y
+		else:
+			wall_x = secret_x + secret_w / 2
+			wall_y = room.position.y - 1
+		
+		map_data.set_tile(wall_x, wall_y, TileMapData.Tile.SECRET_WALL)
+		
+		secret_rooms.append(Rect2i(secret_x, secret_y, secret_w, secret_h))
+		return
+
+func get_secret_room_positions() -> Array[Vector2i]:
+	var positions: Array[Vector2i] = []
+	for room in secret_rooms:
+		# Return center of each secret room
+		positions.append(Vector2i(room.position.x + room.size.x / 2, room.position.y + room.size.y / 2))
+	return positions
+
+func get_trap_positions(count: int, floor_num: int) -> Array[Vector2i]:
+	var positions: Array[Vector2i] = []
+	var occupied: Dictionary = {}
+	
+	# Mark occupied positions
+	for room in rooms:
+		occupied[Vector2i(room.position.x + room.size.x / 2, room.position.y + room.size.y / 2)] = true
+	for room in secret_rooms:
+		occupied[Vector2i(room.position.x + room.size.x / 2, room.position.y + room.size.y / 2)] = true
+	
+	# Mark stairs
+	for y in range(map_data.height):
+		for x in range(map_data.width):
+			if map_data.get_tile(x, y) == TileMapData.Tile.STAIRS_DOWN:
+				occupied[Vector2i(x, y)] = true
+			if map_data.get_tile(x, y) == TileMapData.Tile.SHOP:
+				occupied[Vector2i(x, y)] = true
+	
+	var attempts: int = 0
+	while positions.size() < count and attempts < 100:
+		attempts += 1
+		var room: Rect2i = rooms[randi() % rooms.size()]
+		var tx: int = room.position.x + randi() % room.size.x
+		var ty: int = room.position.y + randi() % room.size.y
+		var tpos: Vector2i = Vector2i(tx, ty)
+		
+		if occupied.has(tpos):
+			continue
+		# Don't place in corridors (check if surrounded by walls)
+		var wall_count: int = 0
+		for dy in range(-1, 2):
+			for dx in range(-1, 2):
+				if map_data.get_tile(tpos.x + dx, tpos.y + dy) == TileMapData.Tile.WALL:
+					wall_count += 1
+		if wall_count > 4:  # Too many walls nearby, probably corridor
+			continue
+		
+		positions.append(tpos)
+		occupied[tpos] = true
+	
+	return positions
