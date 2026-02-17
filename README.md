@@ -78,3 +78,5 @@ Boss floors are single-room arenas. Defeat the boss to reveal stairs and claim a
 3. ✅ Items, fog of war, score, minimap
 4. ✅ XP/leveling, 3 new enemies, boss floors, message log
 5. ✅ Shop system with interactive shop tiles, persistent progression, and unlockable items
+
+<!-- Force rebuild to fix HTML template issue -->
