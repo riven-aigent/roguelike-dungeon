@@ -10,8 +10,8 @@ var permanent_upgrades: Dictionary = {
 	"atk_bonus": 0,
 	"def_bonus": 0,
 	"starting_gold": 0,
-	"extra_potions": 0
-	"revival_amulet": false,
+	"extra_potions": 0,
+	"revival_amulet": false
 }
 
 # Shop unlockables
