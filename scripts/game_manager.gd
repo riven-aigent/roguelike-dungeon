@@ -1418,7 +1418,7 @@ func _draw() -> void:
 				# Boss name above HP bar
 				draw_string(ThemeDB.fallback_font, Vector2(bar_x, bar_y - 2.0), enemy.name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(1.0, 0.3, 0.3))
 
-	# Draw player
+	# Draw player (knight-like shape)
 	var player_color: Color = color_player
 	if damage_flash_timer > 0:
 		player_color = Color(1.0, 0.2, 0.2)
@@ -1430,7 +1430,23 @@ func _draw() -> void:
 		float(player_pos.x * TILE_SIZE) + camera_offset.x + float(TILE_SIZE) / 2.0,
 		float(player_pos.y * TILE_SIZE) + camera_offset.y + float(TILE_SIZE) / 2.0
 	)
-	draw_circle(player_screen, float(TILE_SIZE) * 0.4, player_color)
+	var ps: float = float(TILE_SIZE) * 0.38
+	# Body (shield shape - pointed bottom)
+	var body_pts: PackedVector2Array = PackedVector2Array([
+		Vector2(player_screen.x, player_screen.y - ps),
+		Vector2(player_screen.x + ps * 0.8, player_screen.y - ps * 0.3),
+		Vector2(player_screen.x + ps * 0.7, player_screen.y + ps * 0.5),
+		Vector2(player_screen.x, player_screen.y + ps),
+		Vector2(player_screen.x - ps * 0.7, player_screen.y + ps * 0.5),
+		Vector2(player_screen.x - ps * 0.8, player_screen.y - ps * 0.3)
+	])
+	draw_colored_polygon(body_pts, player_color)
+	# Helmet visor line
+	draw_line(Vector2(player_screen.x - ps * 0.4, player_screen.y - ps * 0.3),
+		Vector2(player_screen.x + ps * 0.4, player_screen.y - ps * 0.3),
+		Color(0.1, 0.1, 0.1), 2.0)
+	# Highlight
+	draw_circle(Vector2(player_screen.x - ps * 0.3, player_screen.y - ps * 0.5), ps * 0.15, Color(0.9, 1.0, 0.9, 0.4))
 
 	# === HUD ===
 	var hud_h: float = 76.0
