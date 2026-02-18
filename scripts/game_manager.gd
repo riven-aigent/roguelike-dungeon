@@ -1503,8 +1503,15 @@ func _try_move(dir: Vector2i) -> void:
 		queue_redraw()
 		return
 
-
+	# Move player to new position
+	player_pos = new_pos
 	
+	# Check for item pickup
+	_check_item_pickup()
+	
+	# Check traps at new position
+	_check_traps()
+
 	# Check stairs
 	var tile: int = map_data.get_tile(player_pos.x, player_pos.y)
 	if tile == TileMapData.Tile.STAIRS_DOWN:
@@ -1517,7 +1524,6 @@ func _try_move(dir: Vector2i) -> void:
 	_enemy_turn()
 	_update_visibility()
 	_update_camera()
-
 func _check_item_pickup() -> void:
 	for item in items:
 		if item.collected:
