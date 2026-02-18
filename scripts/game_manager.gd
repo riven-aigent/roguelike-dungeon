@@ -1126,15 +1126,15 @@ func _draw() -> void:
 				draw_rect(Rect2(ecx - s, ecy - s, s * 2.0, s * 2.0), ecolor)
 
 				# Triangle pointing up (fire shape)
-				var s: float = float(TILE_SIZE) * 0.35
+				var s_flame: float = float(TILE_SIZE) * 0.35
 				var pts: PackedVector2Array = PackedVector2Array([
-					Vector2(ecx, ecy - s),
-					Vector2(ecx + s * 0.8, ecy + s * 0.8),
-					Vector2(ecx - s * 0.8, ecy + s * 0.8)
+					Vector2(ecx, ecy - s_flame),
+					Vector2(ecx + s_flame * 0.8, ecy + s_flame * 0.8),
+					Vector2(ecx - s_flame * 0.8, ecy + s_flame * 0.8)
 				])
 				draw_colored_polygon(pts, ecolor)
 				# Inner flame
-				var s2: float = s * 0.5
+				var s2: float = s_flame * 0.5
 				draw_colored_polygon(PackedVector2Array([
 					Vector2(ecx, ecy - s2),
 					Vector2(ecx + s2 * 0.6, ecy + s2 * 0.6),
