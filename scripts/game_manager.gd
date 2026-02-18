@@ -1169,60 +1169,209 @@ func _draw() -> void:
 
 		match enemy.type:
 			Enemy.Type.SLIME:
-				draw_circle(Vector2(ecx, ecy), float(TILE_SIZE) * 0.35, ecolor)
-			Enemy.Type.BAT:
+				# Blob shape with highlight
 				var s: float = float(TILE_SIZE) * 0.35
+				draw_circle(Vector2(ecx, ecy), s, ecolor)
+				# Highlight
+				draw_circle(Vector2(ecx - s * 0.3, ecy - s * 0.3), s * 0.25, Color(0.9, 1.0, 0.9, 0.5))
+			Enemy.Type.BAT:
+				# Winged diamond shape
+				var s: float = float(TILE_SIZE) * 0.35
+				# Body (diamond)
 				var pts: PackedVector2Array = PackedVector2Array([
-					Vector2(ecx, ecy - s),
-					Vector2(ecx + s, ecy),
-					Vector2(ecx, ecy + s),
-					Vector2(ecx - s, ecy)
+					Vector2(ecx, ecy - s * 0.6),
+					Vector2(ecx + s * 0.4, ecy),
+					Vector2(ecx, ecy + s * 0.6),
+					Vector2(ecx - s * 0.4, ecy)
 				])
 				draw_colored_polygon(pts, ecolor)
+				# Wings (triangles)
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(ecx - s * 0.3, ecy - s * 0.2),
+					Vector2(ecx - s, ecy - s * 0.5),
+					Vector2(ecx - s * 0.3, ecy + s * 0.2)
+				]), ecolor)
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(ecx + s * 0.3, ecy - s * 0.2),
+					Vector2(ecx + s, ecy - s * 0.5),
+					Vector2(ecx + s * 0.3, ecy + s * 0.2)
+				]), ecolor)
 			Enemy.Type.SKELETON:
-				var s: float = float(TILE_SIZE) * 0.3
+				# Skull shape (circle with jaw)
+				var s: float = float(TILE_SIZE) * 0.32
+				draw_circle(Vector2(ecx, ecy - s * 0.2), s * 0.8, ecolor)
+				# Jaw
+				draw_rect(Rect2(ecx - s * 0.5, ecy + s * 0.2, s * 1.0, s * 0.6), ecolor)
+				# Eye sockets
+				draw_circle(Vector2(ecx - s * 0.3, ecy - s * 0.3), s * 0.2, Color(0.1, 0.1, 0.1))
+				draw_circle(Vector2(ecx + s * 0.3, ecy - s * 0.3), s * 0.2, Color(0.1, 0.1, 0.1))
+			Enemy.Type.ORC:
+				# Brutish square with tusks
+				var s: float = float(TILE_SIZE) * 0.38
 				draw_rect(Rect2(ecx - s, ecy - s, s * 2.0, s * 2.0), ecolor)
-
-				# Triangle pointing up (fire shape)
-				var s_flame: float = float(TILE_SIZE) * 0.35
+				# Tusks (triangles)
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(ecx - s * 0.6, ecy + s * 0.5),
+					Vector2(ecx - s * 0.3, ecy + s * 1.1),
+					Vector2(ecx - s * 0.1, ecy + s * 0.5)
+				]), Color(0.9, 0.9, 0.8))
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(ecx + s * 0.6, ecy + s * 0.5),
+					Vector2(ecx + s * 0.3, ecy + s * 1.1),
+					Vector2(ecx + s * 0.1, ecy + s * 0.5)
+				]), Color(0.9, 0.9, 0.8))
+			Enemy.Type.WRAITH:
+				# Ghostly wavy shape
+				var s: float = float(TILE_SIZE) * 0.4
 				var pts: PackedVector2Array = PackedVector2Array([
-					Vector2(ecx, ecy - s_flame),
-					Vector2(ecx + s_flame * 0.8, ecy + s_flame * 0.8),
-					Vector2(ecx - s_flame * 0.8, ecy + s_flame * 0.8)
+					Vector2(ecx, ecy - s),
+					Vector2(ecx + s * 0.7, ecy - s * 0.3),
+					Vector2(ecx + s * 0.5, ecy + s * 0.3),
+					Vector2(ecx + s * 0.8, ecy + s),
+					Vector2(ecx, ecy + s * 0.6),
+					Vector2(ecx - s * 0.8, ecy + s),
+					Vector2(ecx - s * 0.5, ecy + s * 0.3),
+					Vector2(ecx - s * 0.7, ecy - s * 0.3)
+				])
+				draw_colored_polygon(pts, ecolor)
+			Enemy.Type.FIRE_IMP:
+				# Flame shape with horns
+				var s: float = float(TILE_SIZE) * 0.35
+				# Body flame
+				var pts: PackedVector2Array = PackedVector2Array([
+					Vector2(ecx, ecy - s),
+					Vector2(ecx + s * 0.8, ecy + s * 0.8),
+					Vector2(ecx, ecy + s * 0.4),
+					Vector2(ecx - s * 0.8, ecy + s * 0.8)
 				])
 				draw_colored_polygon(pts, ecolor)
 				# Inner flame
-				var s2: float = s_flame * 0.5
 				draw_colored_polygon(PackedVector2Array([
-					Vector2(ecx, ecy - s2),
-					Vector2(ecx + s2 * 0.6, ecy + s2 * 0.6),
-					Vector2(ecx - s2 * 0.6, ecy + s2 * 0.6)
-				]), Color(1.0, 0.8, 0.2))
+					Vector2(ecx, ecy - s * 0.5),
+					Vector2(ecx + s * 0.4, ecy + s * 0.4),
+					Vector2(ecx - s * 0.4, ecy + s * 0.4)
+				]), Color(1.0, 0.9, 0.3))
 			Enemy.Type.GOLEM:
-				# Thick square
+				# Thick square with cracks
 				var s: float = float(TILE_SIZE) * 0.4
 				draw_rect(Rect2(ecx - s, ecy - s, s * 2.0, s * 2.0), ecolor)
-				# Inner cross pattern
-				var cs: float = s * 0.3
-				draw_rect(Rect2(ecx - cs, ecy - s * 0.8, cs * 2.0, s * 1.6), Color(0.3, 0.3, 0.32))
-				draw_rect(Rect2(ecx - s * 0.8, ecy - cs, s * 1.6, cs * 2.0), Color(0.3, 0.3, 0.32))
-			Enemy.Type.BOSS_SLIME:
-				# Large circle with inner circle
-				draw_circle(Vector2(ecx, ecy), float(TILE_SIZE) * 0.48, ecolor)
-				draw_circle(Vector2(ecx, ecy), float(TILE_SIZE) * 0.25, Color(0.2, 0.6, 0.05))
-			Enemy.Type.BOSS_LICH:
-				# Purple diamond with inner detail
-				var s: float = float(TILE_SIZE) * 0.45
+				# Crack pattern
+				var cs: float = s * 0.15
+				draw_line(Vector2(ecx - s * 0.5, ecy - s * 0.8), Vector2(ecx, ecy), Color(0.25, 0.25, 0.27), cs)
+				draw_line(Vector2(ecx, ecy), Vector2(ecx + s * 0.6, ecy + s * 0.7), Color(0.25, 0.25, 0.27), cs)
+			Enemy.Type.GHOST:
+				# Translucent wavy ghost
+				var s: float = float(TILE_SIZE) * 0.38
 				var pts: PackedVector2Array = PackedVector2Array([
 					Vector2(ecx, ecy - s),
-					Vector2(ecx + s, ecy),
-					Vector2(ecx, ecy + s),
-					Vector2(ecx - s, ecy)
+					Vector2(ecx + s * 0.8, ecy - s * 0.2),
+					Vector2(ecx + s * 0.6, ecy + s),
+					Vector2(ecx + s * 0.2, ecy + s * 0.6),
+					Vector2(ecx - s * 0.2, ecy + s),
+					Vector2(ecx - s * 0.6, ecy + s * 0.6),
+					Vector2(ecx - s * 0.8, ecy - s * 0.2)
 				])
 				draw_colored_polygon(pts, ecolor)
-				draw_circle(Vector2(ecx, ecy), float(TILE_SIZE) * 0.18, Color(0.9, 0.3, 1.0))
+			Enemy.Type.SPIDER:
+				# Spider body with legs
+				var s: float = float(TILE_SIZE) * 0.25
+				draw_circle(Vector2(ecx, ecy), s, ecolor)
+				# Legs
+				for i in range(4):
+					var angle: float = PI * 0.2 + i * PI * 0.2
+					draw_line(Vector2(ecx, ecy), Vector2(ecx + cos(angle) * s * 1.8, ecy + sin(angle) * s * 1.8), ecolor, 2)
+					draw_line(Vector2(ecx, ecy), Vector2(ecx - cos(angle) * s * 1.8, ecy + sin(angle) * s * 1.8), ecolor, 2)
+			Enemy.Type.MIMIC:
+				if enemy.mimic_revealed:
+					# Monster form - jagged mouth
+					var s: float = float(TILE_SIZE) * 0.38
+					draw_rect(Rect2(ecx - s, ecy - s * 0.6, s * 2.0, s * 1.4), ecolor)
+					# Teeth
+					for i in range(4):
+						draw_colored_polygon(PackedVector2Array([
+							Vector2(ecx - s + i * s * 0.5, ecy + s * 0.1),
+							Vector2(ecx - s * 0.75 + i * s * 0.5, ecy + s * 0.5),
+							Vector2(ecx - s * 0.5 + i * s * 0.5, ecy + s * 0.1)
+						]), Color(0.9, 0.9, 0.8))
+				else:
+					# Disguised as gold
+					draw_circle(Vector2(ecx, ecy), float(TILE_SIZE) * 0.3, Color(1.0, 0.85, 0.1))
+					draw_string(ThemeDB.fallback_font, Vector2(ecx - 5, ecy + 4), "$", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.8, 0.6, 0.0))
+			Enemy.Type.VAMPIRE:
+				# Elegant diamond with cape
+				var s: float = float(TILE_SIZE) * 0.4
+				# Cape (wider triangle)
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(ecx, ecy - s * 0.5),
+					Vector2(ecx + s, ecy + s),
+					Vector2(ecx - s, ecy + s)
+				]), Color(0.2, 0.0, 0.1))
+				# Body (diamond)
+				var pts: PackedVector2Array = PackedVector2Array([
+					Vector2(ecx, ecy - s),
+					Vector2(ecx + s * 0.5, ecy),
+					Vector2(ecx, ecy + s * 0.5),
+					Vector2(ecx - s * 0.5, ecy)
+				])
+				draw_colored_polygon(pts, ecolor)
+			Enemy.Type.TROLL:
+				# Large lumpy shape
+				var s: float = float(TILE_SIZE) * 0.42
+				# Body
+				draw_circle(Vector2(ecx, ecy), s, ecolor)
+				# Lumps
+				draw_circle(Vector2(ecx - s * 0.5, ecy - s * 0.3), s * 0.3, ecolor)
+				draw_circle(Vector2(ecx + s * 0.4, ecy - s * 0.4), s * 0.25, ecolor)
+			Enemy.Type.CRYSTAL_GOLEM:
+				# Crystal shape (hexagon)
+				var s: float = float(TILE_SIZE) * 0.4
+				var pts: PackedVector2Array = PackedVector2Array([
+					Vector2(ecx, ecy - s),
+					Vector2(ecx + s * 0.7, ecy - s * 0.5),
+					Vector2(ecx + s * 0.7, ecy + s * 0.5),
+					Vector2(ecx, ecy + s),
+					Vector2(ecx - s * 0.7, ecy + s * 0.5),
+					Vector2(ecx - s * 0.7, ecy - s * 0.5)
+				])
+				draw_colored_polygon(pts, ecolor)
+				# Inner shine
+				draw_circle(Vector2(ecx - s * 0.2, ecy - s * 0.2), s * 0.2, Color(1.0, 1.0, 1.0, 0.4))
+			Enemy.Type.SHADOW:
+				# Dark wispy shape
+				var s: float = float(TILE_SIZE) * 0.4
+				var pts: PackedVector2Array = PackedVector2Array([
+					Vector2(ecx, ecy - s),
+					Vector2(ecx + s * 0.6, ecy - s * 0.4),
+					Vector2(ecx + s * 0.4, ecy + s * 0.6),
+					Vector2(ecx, ecy + s * 0.3),
+					Vector2(ecx - s * 0.4, ecy + s * 0.6),
+					Vector2(ecx - s * 0.6, ecy - s * 0.4)
+				])
+				draw_colored_polygon(pts, ecolor)
+			Enemy.Type.BOSS_SLIME:
+				# Large blob with inner core
+				draw_circle(Vector2(ecx, ecy), float(TILE_SIZE) * 0.48, ecolor)
+				draw_circle(Vector2(ecx, ecy), float(TILE_SIZE) * 0.25, Color(0.2, 0.6, 0.05))
+				# Highlight
+				draw_circle(Vector2(ecx - float(TILE_SIZE) * 0.2, ecy - float(TILE_SIZE) * 0.2), float(TILE_SIZE) * 0.1, Color(0.9, 1.0, 0.9, 0.5))
+			Enemy.Type.BOSS_LICH:
+				# Purple skull with crown
+				var s: float = float(TILE_SIZE) * 0.45
+				# Skull
+				draw_circle(Vector2(ecx, ecy - s * 0.1), s * 0.7, ecolor)
+				draw_rect(Rect2(ecx - s * 0.4, ecy + s * 0.3, s * 0.8, s * 0.5), ecolor)
+				# Crown spikes
+				for i in range(3):
+					draw_colored_polygon(PackedVector2Array([
+						Vector2(ecx - s * 0.5 + i * s * 0.5, ecy - s * 0.6),
+						Vector2(ecx - s * 0.35 + i * s * 0.5, ecy - s),
+						Vector2(ecx - s * 0.2 + i * s * 0.5, ecy - s * 0.6)
+					]), Color(1.0, 0.8, 0.0))
+				# Glowing eyes
+				draw_circle(Vector2(ecx - s * 0.25, ecy - s * 0.2), s * 0.15, Color(0.9, 0.3, 1.0))
+				draw_circle(Vector2(ecx + s * 0.25, ecy - s * 0.2), s * 0.15, Color(0.9, 0.3, 1.0))
 			Enemy.Type.BOSS_DRAGON:
-				# Large hexagon-ish shape
+				# Large hexagon with horns
 				var s: float = float(TILE_SIZE) * 0.48
 				var pts: PackedVector2Array = PackedVector2Array([
 					Vector2(ecx, ecy - s),
@@ -1233,8 +1382,19 @@ func _draw() -> void:
 					Vector2(ecx - s * 0.85, ecy - s * 0.4)
 				])
 				draw_colored_polygon(pts, ecolor)
-				# Inner eye
-				draw_circle(Vector2(ecx, ecy), float(TILE_SIZE) * 0.15, Color(1.0, 0.3, 0.0))
+				# Horns
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(ecx - s * 0.6, ecy - s * 0.8),
+					Vector2(ecx - s * 0.9, ecy - s * 1.2),
+					Vector2(ecx - s * 0.3, ecy - s * 0.9)
+				]), Color(0.5, 0.1, 0.1))
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(ecx + s * 0.6, ecy - s * 0.8),
+					Vector2(ecx + s * 0.9, ecy - s * 1.2),
+					Vector2(ecx + s * 0.3, ecy - s * 0.9)
+				]), Color(0.5, 0.1, 0.1))
+				# Glowing eye
+				draw_circle(Vector2(ecx, ecy), float(TILE_SIZE) * 0.12, Color(1.0, 0.3, 0.0))
 
 		# Enemy HP bar (small bar above enemy)
 		if enemy.hp < enemy.max_hp:
