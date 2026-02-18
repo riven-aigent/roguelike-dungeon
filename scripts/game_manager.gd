@@ -367,6 +367,60 @@ func _spawn_enemies_shop_floor() -> void:
 		enemy.setup(t, pos)
 		enemies.append(enemy)
 		occupied[pos] = true
+func _spawn_items() -> void:
+	items.clear()
+	
+	# Base item types available on all floors
+	var base_items: Array = [
+		Item.Type.HEALTH_POTION,
+		Item.Type.HEALTH_POTION,
+		Item.Type.STRENGTH_POTION,
+		Item.Type.GOLD,
+		Item.Type.GOLD,
+		Item.Type.KEY,
+		Item.Type.BOMB
+	]
+	
+	# Add floor-specific items
+	if current_floor >= 3:
+		base_items.append(Item.Type.SWORD)
+	if current_floor >= 5:
+		base_items.append(Item.Type.SHIELD)
+		base_items.append(Item.Type.DAGGER)
+	if current_floor >= 7:
+		base_items.append(Item.Type.AXE)
+	if current_floor >= 10:
+		base_items.append(Item.Type.RING_POWER)
+	if current_floor >= 12:
+		base_items.append(Item.Type.AMULET_LIFE)
+	if current_floor >= 15:
+		base_items.append(Item.Type.TELEPORT_SCROLL)
+	if current_floor >= 20:
+		base_items.append(Item.Type.BLESSING_SCROLL)
+	
+	# Spawn 3-6 items per floor
+	var item_count: int = 3 + (randi() % 4)
+	
+	# Create a list of walkable positions
+	var walkable_positions: Array[Vector2i] = []
+	for y in range(map_data.height):
+		for x in range(map_data.width):
+			if map_data.is_walkable(x, y) and Vector2i(x, y) != player_pos:
+				walkable_positions.append(Vector2i(x, y))
+	
+	if walkable_positions.size() == 0:
+		return
+	
+	walkable_positions.shuffle()
+	
+	# Spawn items at random walkable positions
+	for i in range(mini(item_count, walkable_positions.size())):
+		var item_pos: Vector2i = walkable_positions[i]
+		var item_type: Item.Type = base_items[randi() % base_items.size()]
+		var item: Item = Item.new()
+		item.setup(item_type, item_pos)
+		items.append(item)
+
 func _spawn_boss() -> void:
 	enemies.clear()
 	items.clear()
