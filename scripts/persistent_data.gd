@@ -26,8 +26,8 @@ var shop_unlocks: Dictionary = {
 }
 
 func save() -> void:
-	if OS.has_feature("JavaScript"):
-		# HTML5 export - use localStorage
+	if OS.has_feature("web"):
+		# HTML5 export - use localStorage via JavaScriptBridge
 		var save_data: Dictionary = {
 			"total_gold_earned": total_gold_earned,
 			"total_kills": total_kills,
@@ -36,7 +36,8 @@ func save() -> void:
 			"permanent_upgrades": permanent_upgrades.duplicate(),
 			"shop_unlocks": shop_unlocks.duplicate()
 		}
-		JavaScript.eval("localStorage.setItem('depths_of_ruin_save', JSON.stringify(" + JSON.stringify(save_data) + "))")
+		var json_str: String = JSON.stringify(save_data)
+		JavaScriptBridge.eval("localStorage.setItem('depths_of_ruin_save', '" + json_str.replace("'", "\\'") + "');")
 	else:
 		# Desktop/mobile - use config file
 		var config: ConfigFile = ConfigFile.new()
@@ -54,18 +55,9 @@ func save() -> void:
 		config.save("user://depths_of_ruin.cfg")
 
 func load() -> void:
-	if OS.has_feature("JavaScript"):
-		# HTML5 export - use localStorage
-		var js_code: String = """
-		try {
-			var save_str = localStorage.getItem('depths_of_ruin_save');
-			if (save_str) {
-				return save_str;
-			}
-		} catch(e) {}
-		return null;
-		"""
-		var result: String = JavaScript.eval(js_code)
+	if OS.has_feature("web"):
+		# HTML5 export - use localStorage via JavaScriptBridge
+		var result: String = JavaScriptBridge.eval("localStorage.getItem('depths_of_ruin_save');")
 		if result != "" and result != "null":
 			var save_data: Dictionary = JSON.parse_string(result)
 			if save_data:

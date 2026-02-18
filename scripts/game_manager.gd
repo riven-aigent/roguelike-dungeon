@@ -1042,7 +1042,8 @@ func _draw() -> void:
 	for enemy in enemies:
 		if not enemy.alive:
 			continue
-		if not _is_visible(enemy.pos):
+	if not _is_visible(enemy.pos):
+			continue
 		var ex: float = float(enemy.pos.x * TILE_SIZE) + camera_offset.x
 		var ey: float = float(enemy.pos.y * TILE_SIZE) + camera_offset.y
 		var ecx: float = ex + float(TILE_SIZE) / 2.0
