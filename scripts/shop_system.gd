@@ -1,5 +1,6 @@
 class_name ShopSystem
 
+const PersistentData = preload("res://scripts/persistent_data.gd")
 # Shop item types
 enum ShopItemType {
 	HEALTH_POTION,

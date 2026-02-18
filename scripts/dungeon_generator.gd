@@ -1,5 +1,6 @@
 class_name DungeonGenerator
 
+const TileMapData = preload("res://scripts/tile_map_data.gd")
 const MIN_ROOM_SIZE := 5
 const MAX_ROOM_SIZE := 12
 const MIN_LEAF_SIZE := 8

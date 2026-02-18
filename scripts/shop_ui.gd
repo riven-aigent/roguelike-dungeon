@@ -1,5 +1,7 @@
 class_name ShopUI extends Control
 
+const ShopSystem = preload("res://scripts/shop_system.gd")
+
 signal item_purchased(item_type)
 signal shop_closed
 

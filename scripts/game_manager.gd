@@ -1,8 +1,13 @@
 extends Node2D
-# Load additional scripts
+# Load all required scripts
 const PersistentData = preload("res://scripts/persistent_data.gd")
 const ShopSystem = preload("res://scripts/shop_system.gd")
 const Trap = preload("res://scripts/trap.gd")
+const TileMapData = preload("res://scripts/tile_map_data.gd")
+const DungeonGenerator = preload("res://scripts/dungeon_generator.gd")
+const Enemy = preload("res://scripts/enemy.gd")
+const Item = preload("res://scripts/item.gd")
+const ShopUI = preload("res://scripts/shop_ui.gd")
 
 const TILE_SIZE := 32
 # Persistent progression
@@ -860,6 +865,51 @@ func _get_chase_dir(from: Vector2i, to: Vector2i, can_phase: bool = false) -> Ve
 				return alt_dir
 
 	return Vector2i.ZERO
+
+
+func _try_ranged_attack(enemy: Enemy) -> bool:
+	# Fire Imp ranged attack - check if player is in cardinal direction
+	var dx: int = player_pos.x - enemy.pos.x
+	var dy: int = player_pos.y - enemy.pos.y
+	
+	# Must be in cardinal direction (not diagonal)
+	if dx != 0 and dy != 0:
+		return false
+	
+	# Check line of sight
+	var check_pos: Vector2i = enemy.pos
+	var step: Vector2i = Vector2i(signi(dx), signi(dy))
+	while check_pos != player_pos:
+		check_pos += step
+		if not map_data.is_walkable(check_pos.x, check_pos.y):
+			return false  # Blocked by wall
+	
+	# Perform ranged attack
+	var dmg: int = maxi(1, enemy.atk - player_def)
+	player_hp -= dmg
+	damage_flash_timer = 0.3
+	_add_log_message(enemy.name_str + " fires at you for " + str(dmg) + " damage!")
+	
+	if player_hp <= 0:
+		player_hp = 0
+		game_over = true
+		_add_log_message("You died!")
+		_save_on_death()
+	return true
+
+
+func _enemy_attack(enemy: Enemy) -> void:
+	var dmg: int = maxi(1, enemy.atk - player_def)
+	player_hp -= dmg
+	damage_flash_timer = 0.3
+	_add_log_message(enemy.name_str + " hits you for " + str(dmg) + " damage!")
+	
+	if player_hp <= 0:
+		player_hp = 0
+		game_over = true
+		_add_log_message("You died!")
+		_save_on_death()
+
 
 func _get_enemy_at(pos: Vector2i) -> Enemy:
 	for enemy in enemies:

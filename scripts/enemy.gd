@@ -1,5 +1,6 @@
 class_name Enemy
 
+const Item = preload("res://scripts/item.gd")
 enum Type { SLIME, BAT, SKELETON, ORC, WRAITH, FIRE_IMP, GOLEM, GHOST, SPIDER, MIMIC, BOSS_SLIME, BOSS_LICH, BOSS_DRAGON }
 
 var pos: Vector2i
