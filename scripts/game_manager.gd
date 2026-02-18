@@ -261,7 +261,7 @@ func _generate_floor() -> void:
 		_spawn_secret_room_items()
 		_update_visibility()
 		_update_camera()
-		_add_log_message("Floor " + str(current_floor) + " - Shop Available!")
+		_add_log_message("Floor " + str(current_floor) + " - Press S near gold tile for shop!")
 	else:
 		map_data = generator.generate(60, 60, false)
 		player_pos = map_data.get_random_floor_tile()
