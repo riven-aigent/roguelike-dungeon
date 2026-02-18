@@ -1524,6 +1524,7 @@ func _try_move(dir: Vector2i) -> void:
 	_enemy_turn()
 	_update_visibility()
 	_update_camera()
+	queue_redraw()
 func _check_item_pickup() -> void:
 	for item in items:
 		if item.collected:
