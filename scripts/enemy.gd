@@ -1,7 +1,7 @@
 class_name Enemy
 
 const Item = preload("res://scripts/item.gd")
-enum Type { SLIME, BAT, SKELETON, ORC, WRAITH, FIRE_IMP, GOLEM, GHOST, SPIDER, MIMIC, BOSS_SLIME, BOSS_LICH, BOSS_DRAGON }
+enum Type { SLIME, BAT, SKELETON, ORC, WRAITH, FIRE_IMP, GOLEM, GHOST, SPIDER, MIMIC, BOSS_SLIME, BOSS_LICH, BOSS_DRAGON, VAMPIRE, TROLL, CRYSTAL_GOLEM, SHADOW }
 
 var pos: Vector2i
 var hp: int
@@ -109,6 +109,24 @@ func setup(t: Type, position: Vector2i) -> void:
 			name_str = "Shadow Dragon"; xp_value = 200
 			is_boss = true
 			actions_per_turn = 2
+		Type.VAMPIRE:
+			hp = 10; max_hp = 10; atk = 4; def = 1
+			name_str = "Vampire"; xp_value = 40
+			drop_chance = 0.25
+		Type.TROLL:
+			hp = 20; max_hp = 20; atk = 3; def = 2
+			name_str = "Troll"; xp_value = 45
+			drop_chance = 0.2
+		Type.CRYSTAL_GOLEM:
+			hp = 18; max_hp = 18; atk = 2; def = 6
+			name_str = "Crystal Golem"; xp_value = 50
+			move_cooldown = 0
+			drop_chance = 0.35
+		Type.SHADOW:
+			hp = 6; max_hp = 6; atk = 5; def = 0
+			name_str = "Shadow"; xp_value = 35
+			phase_through_walls = true
+			drop_chance = 0.15
 
 func get_color() -> Color:
 	match type:
@@ -141,6 +159,14 @@ func get_color() -> Color:
 			return Color(0.6, 0.15, 0.8)  # Purple
 		Type.BOSS_DRAGON:
 			return Color(0.7, 0.1, 0.15)  # Dark red
+		Type.VAMPIRE:
+			return Color(0.7, 0.1, 0.3)  # Dark red
+		Type.TROLL:
+			return Color(0.4, 0.5, 0.3)  # Green-brown
+		Type.CRYSTAL_GOLEM:
+			return Color(0.6, 0.8, 1.0, 0.8)  # Translucent blue
+		Type.SHADOW:
+			return Color(0.1, 0.1, 0.15, 0.6)  # Near-black translucent
 	return Color.WHITE
 
 func take_damage(amount: int) -> int:

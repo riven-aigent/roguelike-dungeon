@@ -20,6 +20,9 @@ enum Type {
 	RING_POWER,    # +1 ATK, +1 DEF
 	AMULET_LIFE,   # +10 MAX HP
 	BOOTS_SPEED,   # +1 move speed (future)
+	RING_CRIT,     # +15% crit chance
+	CLOAK_SHADOW,  # +20% dodge chance (future)
+	POTION_MANA,   # Restores mana (future magic system)
 }
 
 enum EquipmentSlot { WEAPON, ARMOR, ACCESSORY }

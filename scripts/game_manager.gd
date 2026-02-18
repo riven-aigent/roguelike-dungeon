@@ -298,6 +298,14 @@ func _get_types_for_floor(floor_num: int) -> Array:
 		types.append(Enemy.Type.GOLEM)
 	if floor_num >= 9:
 		types.append(Enemy.Type.MIMIC)
+	if floor_num >= 10:
+		types.append(Enemy.Type.VAMPIRE)
+	if floor_num >= 11:
+		types.append(Enemy.Type.TROLL)
+	if floor_num >= 12:
+		types.append(Enemy.Type.CRYSTAL_GOLEM)
+	if floor_num >= 13:
+		types.append(Enemy.Type.SHADOW)
 	# Phase out weak enemies
 	if floor_num > 3:
 		types.erase(Enemy.Type.SLIME)
