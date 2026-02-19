@@ -47,6 +47,9 @@ var base_max_hp: int = 20
 var equipped_weapon: Item = null
 var equipped_armor: Item = null
 var equipped_accessory: Item = null
+# Inventory UI state
+var in_inventory: bool = false
+var inventory_selected_slot: int = 0  # 0=weapon, 1=armor, 2=accessory
 var crit_chance: float = 0.05  # Base 5% crit
 var crit_multiplier: float = 1.5
 
@@ -618,7 +621,57 @@ func _unhandled_input(event: InputEvent) -> void:
 		if key_event.keycode == KEY_S and _is_shop_floor_num(current_floor) and not has_visited_shop_this_floor:
 			_show_shop()
 			return
+	# Inventory key (I)
+	if event is InputEventKey and event.is_pressed():
+		var key_event: InputEventKey = event as InputEventKey
+		if key_event.keycode == KEY_I:
+			in_inventory = !in_inventory
+			return
 
+	# Handle inventory navigation and actions
+	if in_inventory:
+		if event is InputEventKey and event.is_pressed():
+			var key_event: InputEventKey = event as InputEventKey
+			match key_event.keycode:
+				KEY_UP:
+					inventory_selected_slot = maxi(0, inventory_selected_slot - 1)
+					return
+				KEY_DOWN:
+					inventory_selected_slot = mini(2, inventory_selected_slot + 1)
+					return
+				KEY_SPACE:
+					# Unequip selected item
+					match inventory_selected_slot:
+						0:  # Weapon
+							if equipped_weapon:
+								equipped_weapon.pos = player_pos
+								equipped_weapon.collected = false
+								items.append(equipped_weapon)
+								equipped_weapon = null
+								_add_log_message("Unequipped weapon!")
+						1:  # Armor
+							if equipped_armor:
+								equipped_armor.pos = player_pos
+								equipped_armor.collected = false
+								items.append(equipped_armor)
+								equipped_armor = null
+								_add_log_message("Unequipped armor!")
+						2:  # Accessory
+							if equipped_accessory:
+								equipped_accessory.pos = player_pos
+								equipped_accessory.collected = false
+								items.append(equipped_accessory)
+								equipped_accessory = null
+								_add_log_message("Unequipped accessory!")
+					_recalculate_stats()
+					return
+				KEY_ESCAPE:
+					in_inventory = false
+					return
+		
+		# Don't process normal movement when in inventory
+		return
+	
 	var dir: Vector2i = Vector2i.ZERO
 
 	# Keyboard
@@ -650,6 +703,10 @@ func _unhandled_input(event: InputEvent) -> void:
 					if shop_btn_rect.has_point(touch_event.position):
 						_show_shop()
 						return
+				# Close inventory when touching outside (mobile)
+				if in_inventory:
+					in_inventory = false
+					return
 				touch_start = touch_event.position
 				is_touching = true
 		else:
@@ -691,7 +748,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					else:
 						dir = Vector2i(0, -1)
 
-	if dir != Vector2i.ZERO:
+	if dir != Vector2i.ZERO and not in_inventory:
 		_try_move(dir)
 
 
@@ -1722,6 +1779,54 @@ func _draw() -> void:
 		draw_rect(shop_btn_rect, btn_color, true, 8.0)
 		draw_string(ThemeDB.fallback_font, Vector2(shop_btn_rect.position.x + 12, shop_btn_rect.position.y + 40), "SHOP", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
 
+	# === INVENTORY UI ===
+	if in_inventory:
+		# Dark overlay
+		draw_rect(Rect2(0, 0, viewport_w, viewport_h), Color(0.0, 0.0, 0.0, 0.8))
+		
+		# Inventory title
+		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - 60.0, 40.0), "INVENTORY", HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 24, Color(1.0, 0.9, 0.3))
+		
+		# Equipment slots
+		var slot_y: float = 80.0
+		var slot_height: float = 60.0
+		var slot_width: float = 200.0
+		var slot_x: float = float(viewport_w) / 2.0 - slot_width / 2.0
+		
+		# Weapon slot
+		var weapon_color: Color = Color(0.3, 0.3, 0.4) if inventory_selected_slot == 0 else Color(0.2, 0.2, 0.3)
+		draw_rect(Rect2(slot_x, slot_y, slot_width, slot_height), weapon_color)
+		draw_string(ThemeDB.fallback_font, Vector2(slot_x + 10, slot_y + 15), "WEAPON", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
+		if equipped_weapon:
+			draw_string(ThemeDB.fallback_font, Vector2(slot_x + 10, slot_y + 35), equipped_weapon.name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.8, 0.8, 0.9))
+			draw_string(ThemeDB.fallback_font, Vector2(slot_x + 10, slot_y + 50), equipped_weapon.get_description(), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.6, 0.9, 0.6))
+		else:
+			draw_string(ThemeDB.fallback_font, Vector2(slot_x + 10, slot_y + 35), "Empty", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.5, 0.5, 0.6))
+		
+		# Armor slot
+		slot_y += slot_height + 10
+		var armor_color: Color = Color(0.3, 0.3, 0.4) if inventory_selected_slot == 1 else Color(0.2, 0.2, 0.3)
+		draw_rect(Rect2(slot_x, slot_y, slot_width, slot_height), armor_color)
+		draw_string(ThemeDB.fallback_font, Vector2(slot_x + 10, slot_y + 15), "ARMOR", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
+		if equipped_armor:
+			draw_string(ThemeDB.fallback_font, Vector2(slot_x + 10, slot_y + 35), equipped_armor.name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.8, 0.8, 0.9))
+			draw_string(ThemeDB.fallback_font, Vector2(slot_x + 10, slot_y + 50), equipped_armor.get_description(), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.6, 0.9, 0.6))
+		else:
+			draw_string(ThemeDB.fallback_font, Vector2(slot_x + 10, slot_y + 35), "Empty", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.5, 0.5, 0.6))
+		
+		# Accessory slot
+		slot_y += slot_height + 10
+		var accessory_color: Color = Color(0.3, 0.3, 0.4) if inventory_selected_slot == 2 else Color(0.2, 0.2, 0.3)
+		draw_rect(Rect2(slot_x, slot_y, slot_width, slot_height), accessory_color)
+		draw_string(ThemeDB.fallback_font, Vector2(slot_x + 10, slot_y + 15), "ACCESSORY", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
+		if equipped_accessory:
+			draw_string(ThemeDB.fallback_font, Vector2(slot_x + 10, slot_y + 35), equipped_accessory.name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.8, 0.8, 0.9))
+			draw_string(ThemeDB.fallback_font, Vector2(slot_x + 10, slot_y + 50), equipped_accessory.get_description(), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.6, 0.9, 0.6))
+		else:
+			draw_string(ThemeDB.fallback_font, Vector2(slot_x + 10, slot_y + 35), "Empty", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.5, 0.5, 0.6))
+		
+		# Instructions
+		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - 100.0, slot_y + slot_height + 20), "Use arrows to select | SPACE to unequip | ESC to close", HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 12, Color(0.7, 0.7, 0.8))
 
 func _draw_message_log(hud_h: float) -> void:
 	if message_log.is_empty():
