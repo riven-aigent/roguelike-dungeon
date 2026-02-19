@@ -129,7 +129,7 @@ var turn_count: int = 0
 # Floating damage numbers
 var floating_texts: Array = []  # Array of {pos: Vector2, text: String, age: float, color: Color, velocity: Vector2}
 
-# Colors
+# Colors (will be modified by floor theme)
 var color_wall: Color = Color(0.25, 0.15, 0.08)
 var color_floor: Color = Color(0.2, 0.2, 0.22)
 var color_stairs: Color = Color(0.0, 0.8, 0.8)
@@ -139,6 +139,10 @@ var color_text: Color = Color(0.9, 0.9, 0.8)
 var color_hud_bg: Color = Color(0.0, 0.0, 0.0, 0.7)
 var color_fog: Color = Color(0.0, 0.0, 0.0)
 var color_dim: float = 0.45
+
+# Floor themes
+enum FloorTheme { DUNGEON, CAVE, CRYPT, VOLCANIC, ICE, SHADOW }
+var current_theme: FloorTheme = FloorTheme.DUNGEON
 
 # Viewport
 var viewport_w: int = 480
@@ -214,6 +218,35 @@ func _is_shop_floor_num(floor_num: int) -> bool:
 	# Shop appears every floor (except boss floors)
 	return not _is_boss_floor_num(floor_num)
 
+func _apply_floor_theme() -> void:
+	# Cycle through themes every 5 floors
+	var theme_index: int = (current_floor / 5) % 5
+	match theme_index:
+		0:  # Floors 1-5, 26-30, etc.
+			current_theme = FloorTheme.DUNGEON
+			color_wall = Color(0.25, 0.15, 0.08)
+			color_floor = Color(0.2, 0.2, 0.22)
+			color_bg = Color(0.05, 0.05, 0.07)
+		1:  # Floors 6-10, 31-35, etc.
+			current_theme = FloorTheme.CAVE
+			color_wall = Color(0.3, 0.25, 0.2)
+			color_floor = Color(0.15, 0.12, 0.1)
+			color_bg = Color(0.02, 0.02, 0.03)
+		2:  # Floors 11-15, 36-40, etc.
+			current_theme = FloorTheme.CRYPT
+			color_wall = Color(0.15, 0.15, 0.2)
+			color_floor = Color(0.1, 0.1, 0.15)
+			color_bg = Color(0.02, 0.02, 0.05)
+		3:  # Floors 16-20, 41-45, etc.
+			current_theme = FloorTheme.VOLCANIC
+			color_wall = Color(0.35, 0.15, 0.1)
+			color_floor = Color(0.25, 0.1, 0.08)
+			color_bg = Color(0.1, 0.03, 0.02)
+		4:  # Floors 21-25, 46-50, etc.
+			current_theme = FloorTheme.ICE
+			color_wall = Color(0.2, 0.25, 0.35)
+			color_floor = Color(0.15, 0.2, 0.3)
+			color_bg = Color(0.02, 0.05, 0.08)
 func _get_xp_for_next_level() -> int:
 	# Formula: 30 * level^1.5, rounded
 	return roundi(30.0 * pow(float(player_level), 1.5))
@@ -272,6 +305,9 @@ func _generate_floor() -> void:
 	poison_turns = 0
 	burn_turns = 0
 	slow_turns = 0
+	
+	# Apply floor theme based on floor number
+	_apply_floor_theme()
 	
 	if is_boss_floor:
 		map_data = generator.generate_boss_floor()
