@@ -306,6 +306,8 @@ func _get_types_for_floor(floor_num: int) -> Array:
 		types.append(Enemy.Type.CRYSTAL_GOLEM)
 	if floor_num >= 13:
 		types.append(Enemy.Type.SHADOW)
+	if floor_num >= 8:
+		types.append(Enemy.Type.WISP)
 	# Phase out weak enemies
 	if floor_num > 3:
 		types.erase(Enemy.Type.SLIME)
@@ -1336,18 +1338,19 @@ func _draw() -> void:
 				draw_colored_polygon(pts, ecolor)
 				# Inner shine
 				draw_circle(Vector2(ecx - s * 0.2, ecy - s * 0.2), s * 0.2, Color(1.0, 1.0, 1.0, 0.4))
-			Enemy.Type.SHADOW:
-				# Dark wispy shape
-				var s: float = float(TILE_SIZE) * 0.4
-				var pts: PackedVector2Array = PackedVector2Array([
-					Vector2(ecx, ecy - s),
-					Vector2(ecx + s * 0.6, ecy - s * 0.4),
-					Vector2(ecx + s * 0.4, ecy + s * 0.6),
-					Vector2(ecx, ecy + s * 0.3),
-					Vector2(ecx - s * 0.4, ecy + s * 0.6),
-					Vector2(ecx - s * 0.6, ecy - s * 0.4)
-				])
 				draw_colored_polygon(pts, ecolor)
+			Enemy.Type.WISP:
+				# Glowing orb with trailing particles
+				var s: float = float(TILE_SIZE) * 0.3
+				# Outer glow
+				draw_circle(Vector2(ecx, ecy), s * 1.3, Color(1.0, 1.0, 0.6, 0.2))
+				# Main body
+				draw_circle(Vector2(ecx, ecy), s, ecolor)
+				# Inner bright core
+				draw_circle(Vector2(ecx, ecy), s * 0.5, Color(1.0, 1.0, 0.9))
+				# Trailing particles
+				draw_circle(Vector2(ecx - s * 0.8, ecy + s * 0.5), s * 0.25, Color(0.9, 0.95, 0.4, 0.5))
+				draw_circle(Vector2(ecx + s * 0.6, ecy + s * 0.7), s * 0.2, Color(0.9, 0.95, 0.4, 0.4))
 			Enemy.Type.BOSS_SLIME:
 				# Large blob with inner core
 				draw_circle(Vector2(ecx, ecy), float(TILE_SIZE) * 0.48, ecolor)
