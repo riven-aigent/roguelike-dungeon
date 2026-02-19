@@ -1,7 +1,7 @@
 class_name Enemy
 
 const Item = preload("res://scripts/item.gd")
-enum Type { SLIME, BAT, SKELETON, ORC, WRAITH, FIRE_IMP, GOLEM, GHOST, SPIDER, MIMIC, BOSS_SLIME, BOSS_LICH, BOSS_DRAGON, VAMPIRE, TROLL, CRYSTAL_GOLEM, SHADOW, WISP }
+enum Type { SLIME, BAT, SKELETON, ORC, WRAITH, FIRE_IMP, GOLEM, GHOST, SPIDER, MIMIC, BOSS_SLIME, BOSS_LICH, BOSS_DRAGON, VAMPIRE, TROLL, CRYSTAL_GOLEM, SHADOW, WISP, RAZOR_BEAST }
 
 var pos: Vector2i
 var hp: int
@@ -132,6 +132,10 @@ func setup(t: Type, position: Vector2i) -> void:
 			name_str = "Wisp"; xp_value = 25
 			ranged_attack = true
 			drop_chance = 0.2
+		Type.RAZOR_BEAST:
+			hp = 7; max_hp = 7; atk = 4; def = 1
+			name_str = "Razor Beast"; xp_value = 30
+			drop_chance = 0.25
 
 func get_color() -> Color:
 	match type:
@@ -174,6 +178,8 @@ func get_color() -> Color:
 			return Color(0.1, 0.1, 0.15, 0.6)  # Near-black translucent
 		Type.WISP:
 			return Color(0.9, 0.95, 0.4, 0.8)  # Glowing yellow
+		Type.RAZOR_BEAST:
+			return Color(0.7, 0.2, 0.3)  # Dark red
 	return Color.WHITE
 
 func take_damage(amount: int) -> int:

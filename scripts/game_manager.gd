@@ -54,8 +54,10 @@ var crit_multiplier: float = 1.5
 var poison_turns: int = 0
 var burn_turns: int = 0
 var slow_turns: int = 0
+var bleed_stacks: int = 0  # Bleed: damage per turn, stacks
 var poison_damage_flash: float = 0.0
 var burn_damage_flash: float = 0.0
+var bleed_damage_flash: float = 0.0
 
 # XP & Leveling
 var player_xp: int = 0
@@ -308,6 +310,8 @@ func _get_types_for_floor(floor_num: int) -> Array:
 		types.append(Enemy.Type.SHADOW)
 	if floor_num >= 8:
 		types.append(Enemy.Type.WISP)
+	if floor_num >= 10:
+		types.append(Enemy.Type.RAZOR_BEAST)
 	# Phase out weak enemies
 	if floor_num > 3:
 		types.erase(Enemy.Type.SLIME)
@@ -712,6 +716,19 @@ func _process_status_effects() -> void:
 		slow_turns -= 1
 		if slow_turns == 0:
 			_add_log_message("Slow effect wore off!")
+	
+	# Bleed damage (stacks)
+	if bleed_stacks > 0:
+		var bleed_dmg: int = bleed_stacks
+		player_hp -= bleed_dmg
+		bleed_damage_flash = 0.3
+		_add_log_message("Bleeding for " + str(bleed_dmg) + " damage! (" + str(bleed_stacks) + " stacks)")
+		bleed_stacks = maxi(0, bleed_stacks - 1)  # Reduce by 1 each turn
+		if player_hp <= 0:
+			player_hp = 0
+			game_over = true
+			score = _calculate_score()
+			_save_on_death()
 
 
 func _boss_slime_split(boss: Enemy) -> void:
@@ -913,6 +930,11 @@ func _enemy_attack(enemy: Enemy) -> void:
 	player_hp -= dmg
 	damage_flash_timer = 0.3
 	_add_log_message(enemy.name_str + " hits you for " + str(dmg) + " damage!")
+	
+	# Razor Beast applies bleed
+	if enemy.type == Enemy.Type.RAZOR_BEAST:
+		bleed_stacks += 2
+		_add_log_message("You're bleeding! (+" + str(2) + " stacks)")
 	
 	if player_hp <= 0:
 		player_hp = 0
@@ -1372,8 +1394,33 @@ func _draw() -> void:
 				# Inner bright core
 				draw_circle(Vector2(ecx, ecy), s * 0.5, Color(1.0, 1.0, 0.9))
 				# Trailing particles
-				draw_circle(Vector2(ecx - s * 0.8, ecy + s * 0.5), s * 0.25, Color(0.9, 0.95, 0.4, 0.5))
 				draw_circle(Vector2(ecx + s * 0.6, ecy + s * 0.7), s * 0.2, Color(0.9, 0.95, 0.4, 0.4))
+			Enemy.Type.RAZOR_BEAST:
+				# Spiky quadruped with sharp edges
+				var s: float = float(TILE_SIZE) * 0.38
+				# Body - angular shape
+				var pts: PackedVector2Array = PackedVector2Array([
+					Vector2(ecx, ecy - s * 0.8),
+					Vector2(ecx + s * 0.6, ecy - s * 0.4),
+					Vector2(ecx + s * 0.9, ecy + s * 0.2),
+					Vector2(ecx + s * 0.5, ecy + s * 0.7),
+					Vector2(ecx, ecy + s * 0.5),
+					Vector2(ecx - s * 0.5, ecy + s * 0.7),
+					Vector2(ecx - s * 0.9, ecy + s * 0.2),
+					Vector2(ecx - s * 0.6, ecy - s * 0.4)
+				])
+				draw_colored_polygon(pts, ecolor)
+				# Spikes
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(ecx - s * 0.3, ecy - s * 0.6),
+					Vector2(ecx, ecy - s * 1.1),
+					Vector2(ecx + s * 0.3, ecy - s * 0.6)
+				]), Color(0.9, 0.9, 0.9))
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(ecx + s * 0.5, ecy - s * 0.2),
+					Vector2(ecx + s * 1.0, ecy - s * 0.4),
+					Vector2(ecx + s * 0.6, ecy + s * 0.1)
+				]), Color(0.9, 0.9, 0.9))
 			Enemy.Type.BOSS_SLIME:
 				# Large blob with inner core
 				var s: float = float(TILE_SIZE) * 0.48
