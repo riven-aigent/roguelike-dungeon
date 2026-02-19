@@ -551,10 +551,41 @@ func _spawn_traps() -> void:
 	
 	for pos in trap_positions:
 		var trap_types: Array = [Trap.Type.SPIKES, Trap.Type.SPIKES, Trap.Type.POISON_DART]
-		if current_floor >= 5:
-			trap_types.append(Trap.Type.FIRE_VENT)
+		# Add themed traps based on floor theme
+		match current_theme:
+			FloorTheme.DUNGEON:
+				if current_floor >= 5:
+					trap_types.append(Trap.Type.FIRE_VENT)
+			FloorTheme.CAVE:
+				trap_types.append(Trap.Type.SPIKES)
+			FloorTheme.CRYPT:
+				if current_floor >= 8:
+					trap_types.append(Trap.Type.SHADOW_PIT)
+			FloorTheme.VOLCANIC:
+				trap_types.append(Trap.Type.LAVA_CRACK)
+				trap_types.append(Trap.Type.FIRE_VENT)
+			FloorTheme.ICE:
+				trap_types.append(Trap.Type.ICE_PATCH)
+		# Generic traps for all themes
 		if current_floor >= 8:
 			trap_types.append(Trap.Type.TELEPORT)
+		if current_floor >= 12:
+			trap_types.append(Trap.Type.SPIRIT_WISP)
+		# Themed traps based on floor theme
+		match current_theme:
+			FloorTheme.ICE:
+				if current_floor >= 6:
+					trap_types.append(Trap.Type.ICE_PATCH)
+			FloorTheme.VOLCANIC:
+				if current_floor >= 16:
+					trap_types.append(Trap.Type.LAVA_CRACK)
+			FloorTheme.SHADOW:
+				if current_floor >= 21:
+					trap_types.append(Trap.Type.SHADOW_PIT)
+					trap_types.append(Trap.Type.SPIRIT_WISP)
+			FloorTheme.CRYPT:
+				if current_floor >= 11:
+					trap_types.append(Trap.Type.SPIRIT_WISP)
 		
 		var trap: Trap = Trap.new()
 		trap.setup(trap_types[randi() % trap_types.size()], pos)
@@ -2395,7 +2426,25 @@ func _trigger_trap(trap: Trap) -> void:
 		Trap.Type.TELEPORT:
 			_teleport_random()
 			_add_log_message("Teleport trap! You're somewhere else...")
-	
+		Trap.Type.ICE_PATCH:
+			slow_turns = 4
+			_add_log_message("Ice patch! Slowed for 4 turns!")
+		Trap.Type.LAVA_CRACK:
+			var dmg: int = maxi(1, 5 - player_def)
+			player_hp -= dmg
+			burn_turns = 5
+			damage_flash_timer = 0.3
+			_add_log_message("Lava crack! -" + str(dmg) + " HP, burning for 5 turns!")
+		Trap.Type.SHADOW_PIT:
+			var dmg: int = maxi(1, 3 - player_def)
+			player_hp -= dmg
+			_teleport_random()
+			damage_flash_timer = 0.3
+			_add_log_message("Shadow pit! -" + str(dmg) + " HP, teleported!")
+		Trap.Type.SPIRIT_WISP:
+			var xp_drain: int = mini(player_xp, 10)
+			player_xp -= xp_drain
+			_add_log_message("Spirit wisp! -" + str(xp_drain) + " XP drained!")
 	if player_hp <= 0:
 		player_hp = 0
 		game_over = true
