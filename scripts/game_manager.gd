@@ -1171,11 +1171,20 @@ func _draw() -> void:
 
 		match enemy.type:
 			Enemy.Type.SLIME:
-				# Blob shape with highlight
+				# Blob shape - amorphous puddle
 				var s: float = float(TILE_SIZE) * 0.35
-				draw_circle(Vector2(ecx, ecy), s, ecolor)
+				var pts: PackedVector2Array = PackedVector2Array([
+					Vector2(ecx, ecy - s * 0.8),
+					Vector2(ecx + s * 0.9, ecy - s * 0.3),
+					Vector2(ecx + s * 0.7, ecy + s * 0.5),
+					Vector2(ecx + s * 0.3, ecy + s * 0.7),
+					Vector2(ecx - s * 0.3, ecy + s * 0.7),
+					Vector2(ecx - s * 0.7, ecy + s * 0.5),
+					Vector2(ecx - s * 0.9, ecy - s * 0.3)
+				])
+				draw_colored_polygon(pts, ecolor)
 				# Highlight
-				draw_circle(Vector2(ecx - s * 0.3, ecy - s * 0.3), s * 0.25, Color(0.9, 1.0, 0.9, 0.5))
+				draw_circle(Vector2(ecx - s * 0.3, ecy - s * 0.2), s * 0.2, Color(0.9, 1.0, 0.9, 0.5))
 			Enemy.Type.BAT:
 				# Winged diamond shape
 				var s: float = float(TILE_SIZE) * 0.35
@@ -1275,9 +1284,16 @@ func _draw() -> void:
 				])
 				draw_colored_polygon(pts, ecolor)
 			Enemy.Type.SPIDER:
-				# Spider body with legs
+				# Spider body with legs - oval body
 				var s: float = float(TILE_SIZE) * 0.25
-				draw_circle(Vector2(ecx, ecy), s, ecolor)
+				# Oval body
+				var pts: PackedVector2Array = PackedVector2Array([
+					Vector2(ecx, ecy - s * 0.7),
+					Vector2(ecx + s * 0.8, ecy),
+					Vector2(ecx, ecy + s * 0.7),
+					Vector2(ecx - s * 0.8, ecy)
+				])
+				draw_colored_polygon(pts, ecolor)
 				# Legs
 				for i in range(4):
 					var angle: float = PI * 0.2 + i * PI * 0.2
@@ -1319,11 +1335,18 @@ func _draw() -> void:
 			Enemy.Type.TROLL:
 				# Large lumpy shape
 				var s: float = float(TILE_SIZE) * 0.42
-				# Body
-				draw_circle(Vector2(ecx, ecy), s, ecolor)
-				# Lumps
-				draw_circle(Vector2(ecx - s * 0.5, ecy - s * 0.3), s * 0.3, ecolor)
-				draw_circle(Vector2(ecx + s * 0.4, ecy - s * 0.4), s * 0.25, ecolor)
+				# Body - irregular blob
+				var pts: PackedVector2Array = PackedVector2Array([
+					Vector2(ecx, ecy - s),
+					Vector2(ecx + s * 0.8, ecy - s * 0.5),
+					Vector2(ecx + s * 0.9, ecy + s * 0.3),
+					Vector2(ecx + s * 0.5, ecy + s * 0.8),
+					Vector2(ecx, ecy + s),
+					Vector2(ecx - s * 0.5, ecy + s * 0.8),
+					Vector2(ecx - s * 0.9, ecy + s * 0.3),
+					Vector2(ecx - s * 0.8, ecy - s * 0.5)
+				])
+				draw_colored_polygon(pts, ecolor)
 			Enemy.Type.CRYSTAL_GOLEM:
 				# Crystal shape (hexagon)
 				var s: float = float(TILE_SIZE) * 0.4
@@ -1353,15 +1376,42 @@ func _draw() -> void:
 				draw_circle(Vector2(ecx + s * 0.6, ecy + s * 0.7), s * 0.2, Color(0.9, 0.95, 0.4, 0.4))
 			Enemy.Type.BOSS_SLIME:
 				# Large blob with inner core
-				draw_circle(Vector2(ecx, ecy), float(TILE_SIZE) * 0.48, ecolor)
-				draw_circle(Vector2(ecx, ecy), float(TILE_SIZE) * 0.25, Color(0.2, 0.6, 0.05))
-				# Highlight
-				draw_circle(Vector2(ecx - float(TILE_SIZE) * 0.2, ecy - float(TILE_SIZE) * 0.2), float(TILE_SIZE) * 0.1, Color(0.9, 1.0, 0.9, 0.5))
+				var s: float = float(TILE_SIZE) * 0.48
+				# Outer blob shape
+				var pts: PackedVector2Array = PackedVector2Array([
+					Vector2(ecx, ecy - s),
+					Vector2(ecx + s * 0.9, ecy - s * 0.4),
+					Vector2(ecx + s * 0.85, ecy + s * 0.5),
+					Vector2(ecx + s * 0.4, ecy + s * 0.85),
+					Vector2(ecx, ecy + s),
+					Vector2(ecx - s * 0.4, ecy + s * 0.85),
+					Vector2(ecx - s * 0.85, ecy + s * 0.5),
+					Vector2(ecx - s * 0.9, ecy - s * 0.4)
+				])
+				draw_colored_polygon(pts, ecolor)
+				# Inner core
+				var inner_pts: PackedVector2Array = PackedVector2Array([
+					Vector2(ecx, ecy - s * 0.5),
+					Vector2(ecx + s * 0.4, ecy),
+					Vector2(ecx, ecy + s * 0.5),
+					Vector2(ecx - s * 0.4, ecy)
+				])
+				draw_colored_polygon(inner_pts, Color(0.2, 0.6, 0.05))
 			Enemy.Type.BOSS_LICH:
 				# Purple skull with crown
 				var s: float = float(TILE_SIZE) * 0.45
-				# Skull
-				draw_circle(Vector2(ecx, ecy - s * 0.1), s * 0.7, ecolor)
+				# Skull - oval shape
+				var skull_pts: PackedVector2Array = PackedVector2Array([
+					Vector2(ecx, ecy - s * 0.8),
+					Vector2(ecx + s * 0.7, ecy - s * 0.3),
+					Vector2(ecx + s * 0.6, ecy + s * 0.4),
+					Vector2(ecx + s * 0.4, ecy + s * 0.7),
+					Vector2(ecx - s * 0.4, ecy + s * 0.7),
+					Vector2(ecx - s * 0.6, ecy + s * 0.4),
+					Vector2(ecx - s * 0.7, ecy - s * 0.3)
+				])
+				draw_colored_polygon(skull_pts, ecolor)
+				# Jaw
 				draw_rect(Rect2(ecx - s * 0.4, ecy + s * 0.3, s * 0.8, s * 0.5), ecolor)
 				# Crown spikes
 				for i in range(3):
