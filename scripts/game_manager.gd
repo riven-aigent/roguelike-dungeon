@@ -497,7 +497,12 @@ func _spawn_items() -> void:
 		base_items.append(Item.Type.RING_VAMPIRE)
 	if current_floor >= 16:
 		base_items.append(Item.Type.AMULET_FURY)
-	
+	if current_floor >= 9:
+		base_items.append(Item.Type.FIRE_BOMB)
+	if current_floor >= 11:
+		base_items.append(Item.Type.FROST_SCROLL)
+	if current_floor >= 13:
+		base_items.append(Item.Type.SHADOW_STEP)
 	# Spawn 3-6 items per floor
 	var item_count: int = 3 + (randi() % 4)
 	
@@ -2345,6 +2350,46 @@ func _check_item_pickup() -> void:
 				Item.Type.POISON_CURE:
 					poison_turns = 0
 					_add_log_message("Used Antidote! Poison cured!")
+				Item.Type.FIRE_BOMB:
+					# Damage all enemies in 3x3 area around player
+					var bomb_dmg: int = player_atk + 3
+					for enemy in enemies:
+						if not enemy.alive:
+							continue
+						var dist: int = abs(enemy.pos.x - player_pos.x) + abs(enemy.pos.y - player_pos.y)
+						if dist <= 2:
+							enemy.hp -= bomb_dmg
+							_spawn_floating_text(enemy.pos, "-" + str(bomb_dmg), Color(1.0, 0.5, 0.1))
+							if enemy.hp <= 0:
+								enemy.alive = false
+								kill_count += 1
+								player_xp += enemy.xp_value
+								_add_log_message("Fire Bomb hit " + enemy.name_str + "!")
+								_handle_enemy_drops(enemy)
+					_add_log_message("Fire Bomb explodes!")
+				Item.Type.FROST_SCROLL:
+					# Freeze all visible enemies
+					for enemy in enemies:
+						if not enemy.alive:
+							continue
+						if _is_visible(enemy.pos):
+							enemy.frozen_turns = 5
+							_spawn_floating_text(enemy.pos, "FROZEN", Color(0.5, 0.8, 1.0))
+					_add_log_message("Frost Scroll! All visible enemies frozen!")
+				Item.Type.SHADOW_STEP:
+					# Teleport to random visible floor tile
+					var valid_tiles: Array = []
+					for y in range(map_data.height):
+						for x in range(map_data.width):
+							var tpos: Vector2i = Vector2i(x, y)
+							if map_data.get_tile(x, y) == TileMapData.Tile.FLOOR and _is_visible(tpos):
+								if not _get_enemy_at(tpos) and tpos != player_pos:
+									valid_tiles.append(tpos)
+					if valid_tiles.size() > 0:
+						player_pos = valid_tiles[randi() % valid_tiles.size()]
+						_add_log_message("Shadow Step! Teleported!")
+					else:
+						_add_log_message("Shadow Step failed - no valid destination!")
 				Item.Type.SWORD, Item.Type.AXE, Item.Type.DAGGER, Item.Type.GREATSWORD, Item.Type.SPEAR:
 					_equip_item(item, "weapon")
 				Item.Type.SHIELD, Item.Type.ARMOR:

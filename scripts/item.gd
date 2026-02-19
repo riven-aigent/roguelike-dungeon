@@ -11,6 +11,10 @@ enum Type {
 	KEY,           # Opens secret walls
 	BOMB,          # Destroys nearby walls
 	POISON_CURE,   # Cures poison status
+	# New consumables
+	FIRE_BOMB,     # Damages all enemies in 3x3 area
+	FROST_SCROLL,  # Freezes all visible enemies for 3 turns
+	SHADOW_STEP,   # Teleport through walls to visible tile
 	# Equipment
 	SWORD,         # +2 ATK
 	AXE,           # +3 ATK, -1 DEF
@@ -75,6 +79,12 @@ func setup(t: Type, position: Vector2i) -> void:
 			name_str = "Bomb"
 		Type.POISON_CURE:
 			name_str = "Antidote"
+		Type.FIRE_BOMB:
+			name_str = "Fire Bomb"
+		Type.FROST_SCROLL:
+			name_str = "Frost Scroll"
+		Type.SHADOW_STEP:
+			name_str = "Shadow Step"
 		# Equipment
 		Type.SWORD:
 			name_str = "Iron Sword"
@@ -163,6 +173,12 @@ func get_color() -> Color:
 			return Color(0.3, 0.3, 0.35)  # Dark gray
 		Type.POISON_CURE:
 			return Color(0.4, 0.9, 0.5)  # Light green
+		Type.FIRE_BOMB:
+			return Color(0.9, 0.3, 0.1)  # Bright red-orange
+		Type.FROST_SCROLL:
+			return Color(0.5, 0.8, 1.0)  # Ice blue
+		Type.SHADOW_STEP:
+			return Color(0.3, 0.2, 0.5)  # Dark purple
 		# Equipment colors
 		Type.SWORD:
 			return Color(0.7, 0.7, 0.8)  # Silver
