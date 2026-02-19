@@ -1331,6 +1331,45 @@ func _draw() -> void:
 					Vector2(icx - s, icy + s * 0.4)
 				])
 				draw_colored_polygon(pts, icolor)
+			Item.Type.GREATSWORD:
+				var s: float = float(TILE_SIZE) * 0.35
+				# Large blade
+				draw_rect(Rect2(icx - s * 0.15, icy - s * 0.9, s * 0.3, s * 1.4), icolor)
+				# Cross guard
+				draw_rect(Rect2(icx - s * 0.4, icy + s * 0.4, s * 0.8, s * 0.15), icolor)
+				# Handle
+				draw_rect(Rect2(icx - s * 0.1, icy + s * 0.55, s * 0.2, s * 0.35), Color(0.4, 0.25, 0.15))
+			Item.Type.SPEAR:
+				var s: float = float(TILE_SIZE) * 0.35
+				# Shaft
+				draw_rect(Rect2(icx - s * 0.08, icy - s * 0.8, s * 0.16, s * 1.6), Color(0.5, 0.35, 0.2))
+				# Spearhead
+				var pts: PackedVector2Array = PackedVector2Array([
+					Vector2(icx, icy - s * 1.1),
+					Vector2(icx + s * 0.2, icy - s * 0.7),
+					Vector2(icx - s * 0.2, icy - s * 0.7)
+				])
+				draw_colored_polygon(pts, icolor)
+			Item.Type.RING_VAMPIRE:
+				var s: float = float(TILE_SIZE) * 0.25
+				draw_circle(Vector2(icx, icy), s * 0.8, icolor)
+				draw_circle(Vector2(icx, icy), s * 0.5, Color(0.1, 0.05, 0.1))  # Dark center
+				# Red gem
+				draw_circle(Vector2(icx, icy - s * 0.3), s * 0.15, Color(0.9, 0.1, 0.2))
+			Item.Type.AMULET_FURY:
+				var s: float = float(TILE_SIZE) * 0.25
+				# Chain
+				draw_rect(Rect2(icx - s * 0.1, icy - s * 0.9, s * 0.2, s * 0.3), Color(0.7, 0.6, 0.3))
+				# Amulet body
+				draw_circle(Vector2(icx, icy), s * 0.7, icolor)
+				# Flame symbol inside
+				var flame_pts: PackedVector2Array = PackedVector2Array([
+					Vector2(icx, icy - s * 0.4),
+					Vector2(icx + s * 0.2, icy + s * 0.3),
+					Vector2(icx, icy + s * 0.1),
+					Vector2(icx - s * 0.2, icy + s * 0.3)
+				])
+				draw_colored_polygon(flame_pts, Color(1.0, 0.5, 0.1))
 
 	# Draw enemies
 	for enemy in enemies:
