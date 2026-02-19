@@ -126,6 +126,9 @@ var shop_btn_touch_index: int = -1
 # Turn counter (for Golem/Lich mechanics)
 var turn_count: int = 0
 
+# Floating damage numbers
+var floating_texts: Array = []  # Array of {pos: Vector2, text: String, age: float, color: Color, velocity: Vector2}
+
 # Colors
 var color_wall: Color = Color(0.25, 0.15, 0.08)
 var color_floor: Color = Color(0.2, 0.2, 0.22)
@@ -234,6 +237,28 @@ func _add_log_message(msg: String) -> void:
 	message_log.push_front({"text": msg, "age": 0.0})
 	if message_log.size() > MAX_LOG_MESSAGES:
 		message_log.resize(MAX_LOG_MESSAGES)
+
+func _spawn_floating_text(pos: Vector2i, text: String, color: Color) -> void:
+	var screen_pos := Vector2(
+		float(pos.x * TILE_SIZE) + camera_offset.x + float(TILE_SIZE) / 2.0,
+		float(pos.y * TILE_SIZE) + camera_offset.y + float(TILE_SIZE) / 2.0
+	)
+	floating_texts.append({
+		"pos": screen_pos,
+		"text": text,
+		"age": 0.0,
+		"color": color,
+		"velocity": Vector2(randf_range(-20, 20), -60)
+	})
+
+func _update_floating_texts(delta: float) -> void:
+	for i in range(floating_texts.size() - 1, -1, -1):
+		var ft = floating_texts[i]
+		ft.age += delta
+		ft.pos += ft.velocity * delta
+		ft.velocity.y += 80 * delta  # Gravity
+		if ft.age > 1.0:
+			floating_texts.remove_at(i)
 
 func _generate_floor() -> void:
 	is_boss_floor = _is_boss_floor_num(current_floor)
@@ -583,6 +608,15 @@ func _process(delta: float) -> void:
 			levelup_flash_timer = 0.0
 		needs_redraw = true
 	if damage_flash_timer > 0:
+		damage_flash_timer -= delta
+		if damage_flash_timer <= 0:
+			damage_flash_timer = 0.0
+		needs_redraw = true
+	# Update floating texts
+	if floating_texts.size() > 0:
+		_update_floating_texts(delta)
+		needs_redraw = true
+	# D-pad hold repeat
 		damage_flash_timer -= delta
 		if damage_flash_timer <= 0:
 			damage_flash_timer = 0.0
@@ -1027,6 +1061,7 @@ func _try_ranged_attack(enemy: Enemy) -> bool:
 	var dmg: int = maxi(1, enemy.atk - player_def)
 	player_hp -= dmg
 	damage_flash_timer = 0.3
+	_spawn_floating_text(player_pos, "-" + str(dmg), Color(1.0, 0.2, 0.2))
 	_add_log_message(enemy.name_str + " fires at you for " + str(dmg) + " damage!")
 	
 	if player_hp <= 0:
@@ -1041,6 +1076,7 @@ func _enemy_attack(enemy: Enemy) -> void:
 	var dmg: int = maxi(1, enemy.atk - player_def)
 	player_hp -= dmg
 	damage_flash_timer = 0.3
+	_spawn_floating_text(player_pos, "-" + str(dmg), Color(1.0, 0.2, 0.2))
 	_add_log_message(enemy.name_str + " hits you for " + str(dmg) + " damage!")
 	
 	# Razor Beast applies bleed
@@ -1707,6 +1743,15 @@ func _draw() -> void:
 	])
 	draw_colored_polygon(shield_pts, Color(0.6, 0.5, 0.3))
 
+	# Draw floating damage numbers
+	for ft in floating_texts:
+		var alpha: float = 1.0 - (ft.age / 1.0)  # Fade out over 1 second
+		var ft_color: Color = Color(ft.color.r, ft.color.g, ft.color.b, alpha)
+		var font_size: int = 16 if ft.text.begins_with("-") else 14
+		draw_string(ThemeDB.fallback_font, ft.pos - Vector2(10, 0), ft.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, ft_color)
+
+	# === HUD ===
+
 	# === HUD ===
 	var hud_h: float = 76.0
 	draw_rect(Rect2(0, 0, viewport_w, hud_h), color_hud_bg)
@@ -2089,17 +2134,21 @@ func _check_item_pickup() -> void:
 				Item.Type.HEALTH_POTION:
 					var heal: int = mini(8, player_max_hp - player_hp)
 					player_hp += heal
+					_spawn_floating_text(player_pos, "+" + str(heal) + " HP", Color(0.2, 1.0, 0.3))
 					_add_log_message("Picked up Health Potion! +" + str(heal) + " HP")
 				Item.Type.STRENGTH_POTION:
 					base_atk += 1
+					_spawn_floating_text(player_pos, "+1 ATK", Color(1.0, 0.6, 0.2))
 					_add_log_message("Picked up Strength Potion! +1 ATK")
 					_recalculate_stats()
 				Item.Type.SHIELD_SCROLL:
 					base_def += 1
+					_spawn_floating_text(player_pos, "+1 DEF", Color(0.3, 0.6, 1.0))
 					_add_log_message("Picked up Shield Scroll! +1 DEF")
 					_recalculate_stats()
 				Item.Type.GOLD:
 					gold_collected += 10
+					_spawn_floating_text(player_pos, "+10g", Color(1.0, 0.85, 0.1))
 					_add_log_message("Picked up Gold! +10 gold")
 				Item.Type.KEY:
 					keys += 1
@@ -2146,6 +2195,11 @@ func _player_attack(enemy: Enemy) -> void:
 	
 	var dmg: int = enemy.take_damage(damage)
 	
+	# Spawn floating damage number
+	var dmg_color: Color = Color(1.0, 0.8, 0.1) if is_crit else Color(1.0, 0.3, 0.3)
+	var dmg_text: String = "-" + str(dmg) if not is_crit else "-" + str(dmg) + "!"
+	_spawn_floating_text(enemy.pos, dmg_text, dmg_color)
+	
 	if is_crit:
 		_add_log_message("CRITICAL HIT! " + str(dmg) + " damage!")
 	
@@ -2159,6 +2213,7 @@ func _player_attack(enemy: Enemy) -> void:
 		_add_log_message("Killed " + enemy.name_str + "!")
 		kill_count += 1
 		player_xp += enemy.xp_value
+		_spawn_floating_text(enemy.pos, "+" + str(enemy.xp_value) + " XP", Color(0.5, 0.8, 1.0))
 		_add_log_message("+" + str(enemy.xp_value) + " XP")
 		_check_level_up()
 		score = _calculate_score()
