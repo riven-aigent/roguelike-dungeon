@@ -453,6 +453,14 @@ func _spawn_items() -> void:
 		base_items.append(Item.Type.TELEPORT_SCROLL)
 	if current_floor >= 20:
 		base_items.append(Item.Type.BLESSING_SCROLL)
+	if current_floor >= 8:
+		base_items.append(Item.Type.GREATSWORD)
+	if current_floor >= 6:
+		base_items.append(Item.Type.SPEAR)
+	if current_floor >= 14:
+		base_items.append(Item.Type.RING_VAMPIRE)
+	if current_floor >= 16:
+		base_items.append(Item.Type.AMULET_FURY)
 	
 	# Spawn 3-6 items per floor
 	var item_count: int = 3 + (randi() % 4)

@@ -23,6 +23,11 @@ enum Type {
 	RING_CRIT,     # +15% crit chance
 	CLOAK_SHADOW,  # +20% dodge chance (future)
 	POTION_MANA,   # Restores mana (future magic system)
+	# New equipment
+	GREATSWORD,    # +4 ATK, -1 DEF
+	SPEAR,         # +2 ATK, +1 DEF, can attack 2 tiles
+	RING_VAMPIRE,  # +5% lifesteal
+	AMULET_FURY    # +2 ATK, +10% crit
 }
 
 enum EquipmentSlot { WEAPON, ARMOR, ACCESSORY }
@@ -113,6 +118,28 @@ func setup(t: Type, position: Vector2i) -> void:
 			name_str = "Boots of Speed"
 			is_equipment = true
 			equipment_slot = EquipmentSlot.ACCESSORY
+		Type.GREATSWORD:
+			name_str = "Greatsword"
+			is_equipment = true
+			equipment_slot = EquipmentSlot.WEAPON
+			atk_bonus = 4
+			def_bonus = -1
+		Type.SPEAR:
+			name_str = "Spear"
+			is_equipment = true
+			equipment_slot = EquipmentSlot.WEAPON
+			atk_bonus = 2
+			def_bonus = 1
+		Type.RING_VAMPIRE:
+			name_str = "Ring of Vampirism"
+			is_equipment = true
+			equipment_slot = EquipmentSlot.ACCESSORY
+		Type.AMULET_FURY:
+			name_str = "Amulet of Fury"
+			is_equipment = true
+			equipment_slot = EquipmentSlot.ACCESSORY
+			atk_bonus = 2
+			crit_bonus = 0.1
 
 func get_color() -> Color:
 	match type:
@@ -153,6 +180,14 @@ func get_color() -> Color:
 			return Color(0.2, 0.8, 0.3)  # Green
 		Type.BOOTS_SPEED:
 			return Color(0.3, 0.6, 0.9)  # Blue
+		Type.GREATSWORD:
+			return Color(0.8, 0.75, 0.85)  # Bright silver
+		Type.SPEAR:
+			return Color(0.6, 0.55, 0.5)  # Brown wooden shaft
+		Type.RING_VAMPIRE:
+			return Color(0.6, 0.1, 0.2)  # Dark red
+		Type.AMULET_FURY:
+			return Color(0.9, 0.3, 0.2)  # Red-orange
 	return Color.WHITE
 
 func get_description() -> String:
