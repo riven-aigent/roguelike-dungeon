@@ -113,6 +113,11 @@ const DPAD_REPEAT_DELAY := 0.28
 const DPAD_REPEAT_RATE := 0.12
 var dpad_repeat_started: bool = false
 
+# Shop button for mobile
+var shop_btn_rect: Rect2 = Rect2(0, 0, 60, 60)
+var shop_btn_touch_index: int = -1
+
+
 # Turn counter (for Golem/Lich mechanics)
 var turn_count: int = 0
 
@@ -198,8 +203,8 @@ func _is_boss_floor_num(floor_num: int) -> bool:
 	return floor_num % 5 == 0
 
 func _is_shop_floor_num(floor_num: int) -> bool:
-	# Shop appears every 3 floors, but not on boss floors
-	return floor_num % 3 == 0 and not _is_boss_floor_num(floor_num)
+	# Shop appears every floor (except boss floors)
+	return not _is_boss_floor_num(floor_num)
 
 func _get_xp_for_next_level() -> int:
 	# Formula: 30 * level^1.5, rounded
@@ -626,6 +631,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("move_right"):
 		dir = Vector2i(1, 0)
 
+
 	# D-pad touch buttons
 	if event is InputEventScreenTouch:
 		var touch_event: InputEventScreenTouch = event as InputEventScreenTouch
@@ -639,6 +645,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				dpad_repeat_started = false
 				queue_redraw()
 			else:
+				# Shop button touch
+				if _is_shop_floor_num(current_floor) and not has_visited_shop_this_floor and not in_shop:
+					if shop_btn_rect.has_point(touch_event.position):
+						_show_shop()
+						return
 				touch_start = touch_event.position
 				is_touching = true
 		else:
@@ -1693,6 +1704,14 @@ func _draw() -> void:
 		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - float(kills_text.length()) * 5.0, float(viewport_h) / 2.0 + 50.0), kills_text, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 18, color_text)
 		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - float(gold_text2.length()) * 5.0, float(viewport_h) / 2.0 + 75.0), gold_text2, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 18, color_text)
 		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - float(restart_text.length()) * 4.0, float(viewport_h) / 2.0 + 120.0), restart_text, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 14, Color(0.6, 0.6, 0.5))
+
+	# Draw shop button for mobile (right side)
+	if _is_shop_floor_num(current_floor) and not has_visited_shop_this_floor and not in_shop:
+		shop_btn_rect = Rect2(float(viewport_w) - 80.0, float(viewport_h) - 100.0, 70.0, 70.0)
+		var btn_color: Color = Color(0.8, 0.6, 0.1, 0.7)
+		draw_rect(shop_btn_rect, btn_color, true, 8.0)
+		draw_string(ThemeDB.fallback_font, Vector2(shop_btn_rect.position.x + 12, shop_btn_rect.position.y + 40), "SHOP", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
+
 
 func _draw_message_log(hud_h: float) -> void:
 	if message_log.is_empty():
