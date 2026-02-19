@@ -1,7 +1,7 @@
 class_name Enemy
 
 const Item = preload("res://scripts/item.gd")
-enum Type { SLIME, BAT, SKELETON, ORC, WRAITH, FIRE_IMP, GOLEM, GHOST, SPIDER, MIMIC, BOSS_SLIME, BOSS_LICH, BOSS_DRAGON, VAMPIRE, TROLL, CRYSTAL_GOLEM, SHADOW, WISP, RAZOR_BEAST, NECROMANCER }
+enum Type { SLIME, BAT, SKELETON, ORC, WRAITH, FIRE_IMP, GOLEM, GHOST, SPIDER, MIMIC, BOSS_SLIME, BOSS_LICH, BOSS_DRAGON, VAMPIRE, TROLL, CRYSTAL_GOLEM, SHADOW, WISP, RAZOR_BEAST, NECROMANCER, DJINN }
 
 var pos: Vector2i
 var hp: int
@@ -142,6 +142,11 @@ func setup(t: Type, position: Vector2i) -> void:
 			name_str = "Necromancer"; xp_value = 50
 			can_resurrect = true
 			drop_chance = 0.3
+		Type.DJINN:
+			hp = 8; max_hp = 8; atk = 4; def = 1
+			name_str = "Shaytan Djinn"; xp_value = 40
+			phase_through_walls = true  # Can phase through walls
+			drop_chance = 0.25
 
 func get_color() -> Color:
 	match type:
@@ -188,6 +193,8 @@ func get_color() -> Color:
 			return Color(0.7, 0.2, 0.3)  # Dark red
 		Type.NECROMANCER:
 			return Color(0.3, 0.1, 0.4)  # Dark purple
+		Type.DJINN:
+			return Color(0.2, 0.1, 0.5, 0.8)  # Translucent dark blue (smokeless fire essence)
 	return Color.WHITE
 
 func take_damage(amount: int) -> int:

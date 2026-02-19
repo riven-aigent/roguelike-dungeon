@@ -347,6 +347,8 @@ func _get_types_for_floor(floor_num: int) -> Array:
 		types.append(Enemy.Type.WISP)
 	if floor_num >= 10:
 		types.append(Enemy.Type.RAZOR_BEAST)
+	if floor_num >= 11:
+		types.append(Enemy.Type.DJINN)
 	# Phase out weak enemies
 	if floor_num > 3:
 		types.erase(Enemy.Type.SLIME)
@@ -1599,6 +1601,26 @@ func _draw() -> void:
 				# Glowing hands (magic)
 				draw_circle(Vector2(ecx - s * 0.6, ecy + s * 0.1), s * 0.15, Color(0.6, 0.1, 0.8, 0.7))
 				draw_circle(Vector2(ecx + s * 0.6, ecy + s * 0.1), s * 0.15, Color(0.6, 0.1, 0.8, 0.7))
+			Enemy.Type.DJINN:
+				# Smokeless fire spirit - wavy ethereal form
+				var s: float = float(TILE_SIZE) * 0.38
+				# Main body - flame-like wavy shape
+				var pts: PackedVector2Array = PackedVector2Array([
+					Vector2(ecx, ecy - s * 1.1),
+					Vector2(ecx + s * 0.6, ecy - s * 0.5),
+					Vector2(ecx + s * 0.8, ecy + s * 0.2),
+					Vector2(ecx + s * 0.4, ecy + s * 0.7),
+					Vector2(ecx, ecy + s * 0.5),
+					Vector2(ecx - s * 0.4, ecy + s * 0.7),
+					Vector2(ecx - s * 0.8, ecy + s * 0.2),
+					Vector2(ecx - s * 0.6, ecy - s * 0.5)
+				])
+				draw_colored_polygon(pts, ecolor)
+				# Inner fire glow
+				draw_circle(Vector2(ecx, ecy - s * 0.3), s * 0.25, Color(0.4, 0.2, 0.8, 0.6))
+				# Eyes - malevolent glow
+				draw_circle(Vector2(ecx - s * 0.2, ecy - s * 0.5), s * 0.1, Color(1.0, 0.3, 0.1))
+				draw_circle(Vector2(ecx + s * 0.2, ecy - s * 0.5), s * 0.1, Color(1.0, 0.3, 0.1))
 			Enemy.Type.BOSS_SLIME:
 				# Large blob with inner core
 				var s: float = float(TILE_SIZE) * 0.48
