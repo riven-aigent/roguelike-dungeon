@@ -2400,6 +2400,7 @@ func _check_item_pickup() -> void:
 			return
 
 func _equip_item(item: Item, slot: String) -> void:
+	item.collected = true  # Mark as collected so it doesn't appear on ground
 	var old_item: Item = null
 	match slot:
 		"weapon":
