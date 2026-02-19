@@ -2305,12 +2305,27 @@ func _try_move(dir: Vector2i) -> void:
 	# Check traps at new position
 	_check_traps()
 
-	# Check stairs
+# Check stairs - only if door is unlocked or no door exists
 	var tile: int = map_data.get_tile(player_pos.x, player_pos.y)
 	if tile == TileMapData.Tile.STAIRS_DOWN:
-		current_floor += 1
-		_generate_floor()
-		return
+		# Check if there's a locked door blocking exit
+		var door_blocked: bool = false
+		for dx in range(-1, 2):
+			for dy in range(-1, 2):
+				var check_pos: Vector2i = Vector2i(player_pos.x + dx, player_pos.y + dy)
+				if check_pos.x >= 0 and check_pos.x < map_data.width and check_pos.y >= 0 and check_pos.y < map_data.height:
+					if map_data.get_tile(check_pos.x, check_pos.y) == TileMapData.Tile.DOOR:
+						if keys > 0:
+							keys -= 1
+							map_data.set_tile(check_pos.x, check_pos.y, TileMapData.Tile.FLOOR)
+							_add_log_message("Used key to unlock door!")
+						else:
+							door_blocked = true
+							_add_log_message("Door is locked! Need a key.")
+		if not door_blocked:
+			current_floor += 1
+			_generate_floor()
+			return
 
 	# Enemy turn after player moves
 	turn_count += 1

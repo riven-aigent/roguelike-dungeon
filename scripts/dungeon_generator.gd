@@ -33,12 +33,27 @@ func generate(width: int = 60, height: int = 60, is_shop_floor: bool = false) ->
 	_create_rooms(root)
 	_create_corridors(root)
 	
-	# Place stairs down in last room
+	# Place stairs down in last room with a locked door
 	if rooms.size() > 1:
 		var stairs_room: Rect2i = rooms[rooms.size() - 1]
 		var sx: int = stairs_room.position.x + (randi() % maxi(stairs_room.size.x, 1))
 		var sy: int = stairs_room.position.y + (randi() % maxi(stairs_room.size.y, 1))
 		map_data.set_tile(sx, sy, TileMapData.Tile.STAIRS_DOWN)
+		# Place a locked door adjacent to stairs (on a floor tile)
+		var door_placed: bool = false
+		for dx in range(-1, 2):
+			for dy in range(-1, 2):
+				if dx == 0 and dy == 0:
+					continue
+				var door_x: int = sx + dx
+				var door_y: int = sy + dy
+				if door_x >= 0 and door_x < map_data.width and door_y >= 0 and door_y < map_data.height:
+					if map_data.get_tile(door_x, door_y) == TileMapData.Tile.FLOOR:
+						map_data.set_tile(door_x, door_y, TileMapData.Tile.DOOR)
+						door_placed = true
+						break
+			if door_placed:
+				break
 	# Place shop tile if this is a shop floor
 	if is_shop_floor:
 		_place_shop_tile()
