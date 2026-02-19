@@ -2186,11 +2186,11 @@ func _check_item_pickup() -> void:
 				Item.Type.POISON_CURE:
 					poison_turns = 0
 					_add_log_message("Used Antidote! Poison cured!")
-				Item.Type.SWORD, Item.Type.AXE, Item.Type.DAGGER:
+				Item.Type.SWORD, Item.Type.AXE, Item.Type.DAGGER, Item.Type.GREATSWORD, Item.Type.SPEAR:
 					_equip_item(item, "weapon")
 				Item.Type.SHIELD, Item.Type.ARMOR:
 					_equip_item(item, "armor")
-				Item.Type.RING_POWER, Item.Type.AMULET_LIFE, Item.Type.BOOTS_SPEED:
+				Item.Type.RING_POWER, Item.Type.AMULET_LIFE, Item.Type.BOOTS_SPEED, Item.Type.RING_VAMPIRE, Item.Type.AMULET_FURY:
 					_equip_item(item, "accessory")
 			score = _calculate_score()
 			return
