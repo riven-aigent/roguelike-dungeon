@@ -1226,50 +1226,60 @@ func _draw() -> void:
 		match enemy.type:
 			Enemy.Type.SLIME:
 				# Blob shape - amorphous puddle
+				# Blob shape - amorphous puddle with wavy bottom
 				var s: float = float(TILE_SIZE) * 0.35
 				var pts: PackedVector2Array = PackedVector2Array([
 					Vector2(ecx, ecy - s * 0.8),
-					Vector2(ecx + s * 0.9, ecy - s * 0.3),
-					Vector2(ecx + s * 0.7, ecy + s * 0.5),
-					Vector2(ecx + s * 0.3, ecy + s * 0.7),
-					Vector2(ecx - s * 0.3, ecy + s * 0.7),
-					Vector2(ecx - s * 0.7, ecy + s * 0.5),
-					Vector2(ecx - s * 0.9, ecy - s * 0.3)
+					Vector2(ecx + s * 0.8, ecy - s * 0.4),
+					Vector2(ecx + s * 0.6, ecy + s * 0.3),
+					Vector2(ecx + s * 0.2, ecy + s * 0.6),
+					Vector2(ecx - s * 0.2, ecy + s * 0.6),
+					Vector2(ecx - s * 0.6, ecy + s * 0.3),
+					Vector2(ecx - s * 0.8, ecy - s * 0.4)
 				])
 				draw_colored_polygon(pts, ecolor)
-				# Highlight
-				draw_circle(Vector2(ecx - s * 0.3, ecy - s * 0.2), s * 0.2, Color(0.9, 1.0, 0.9, 0.5))
+				# Highlight (eye)
+				draw_circle(Vector2(ecx - s * 0.2, ecy - s * 0.3), s * 0.15, Color(0.9, 1.0, 0.9, 0.6))
+				# Mouth
+				draw_line(Vector2(ecx - s * 0.2, ecy + s * 0.1), Vector2(ecx + s * 0.2, ecy + s * 0.1), Color(0.2, 0.2, 0.2), 2)
 			Enemy.Type.BAT:
-				# Winged diamond shape
+				# Winged creature with curved bat wings
 				var s: float = float(TILE_SIZE) * 0.35
-				# Body (diamond)
-				var pts: PackedVector2Array = PackedVector2Array([
-					Vector2(ecx, ecy - s * 0.6),
-					Vector2(ecx + s * 0.4, ecy),
-					Vector2(ecx, ecy + s * 0.6),
-					Vector2(ecx - s * 0.4, ecy)
+				# Body (oval)
+				draw_circle(Vector2(ecx, ecy), s * 0.4, ecolor)
+				# Curved wings
+				var wing_pts_left: PackedVector2Array = PackedVector2Array([
+					Vector2(ecx - s * 0.2, ecy),
+					Vector2(ecx - s * 0.8, ecy - s * 0.6),
+					Vector2(ecx - s * 0.4, ecy - s * 0.2),
+					Vector2(ecx - s * 0.6, ecy + s * 0.4)
 				])
-				draw_colored_polygon(pts, ecolor)
-				# Wings (triangles)
-				draw_colored_polygon(PackedVector2Array([
-					Vector2(ecx - s * 0.3, ecy - s * 0.2),
-					Vector2(ecx - s, ecy - s * 0.5),
-					Vector2(ecx - s * 0.3, ecy + s * 0.2)
-				]), ecolor)
-				draw_colored_polygon(PackedVector2Array([
-					Vector2(ecx + s * 0.3, ecy - s * 0.2),
-					Vector2(ecx + s, ecy - s * 0.5),
-					Vector2(ecx + s * 0.3, ecy + s * 0.2)
-				]), ecolor)
-			Enemy.Type.SKELETON:
-				# Skull shape (circle with jaw)
+				var wing_pts_right: PackedVector2Array = PackedVector2Array([
+					Vector2(ecx + s * 0.2, ecy),
+					Vector2(ecx + s * 0.8, ecy - s * 0.6),
+					Vector2(ecx + s * 0.4, ecy - s * 0.2),
+					Vector2(ecx + s * 0.6, ecy + s * 0.4)
+				])
+				draw_colored_polygon(wing_pts_left, ecolor)
+				draw_colored_polygon(wing_pts_right, ecolor)
+				# Eyes
+				draw_circle(Vector2(ecx - s * 0.15, ecy - s * 0.1), s * 0.08, Color(0.1, 0.1, 0.1))
+				draw_circle(Vector2(ecx + s * 0.15, ecy - s * 0.1), s * 0.08, Color(0.1, 0.1, 0.1))
+				# Detailed skull with nasal cavity and teeth
 				var s: float = float(TILE_SIZE) * 0.32
+				# Skull (circle)
 				draw_circle(Vector2(ecx, ecy - s * 0.2), s * 0.8, ecolor)
-				# Jaw
+				# Jaw with teeth
 				draw_rect(Rect2(ecx - s * 0.5, ecy + s * 0.2, s * 1.0, s * 0.6), ecolor)
+				# Teeth
+				for i in range(4):
+					var tooth_x = ecx - s * 0.4 + i * s * 0.25
+					draw_rect(Rect2(tooth_x - s * 0.05, ecy + s * 0.2, s * 0.1, s * 0.2), Color(0.9, 0.9, 0.9))
 				# Eye sockets
 				draw_circle(Vector2(ecx - s * 0.3, ecy - s * 0.3), s * 0.2, Color(0.1, 0.1, 0.1))
 				draw_circle(Vector2(ecx + s * 0.3, ecy - s * 0.3), s * 0.2, Color(0.1, 0.1, 0.1))
+				# Nasal cavity
+				draw_circle(Vector2(ecx, ecy - s * 0.1), s * 0.15, Color(0.1, 0.1, 0.1))
 			Enemy.Type.ORC:
 				# Brutish square with tusks
 				var s: float = float(TILE_SIZE) * 0.38
