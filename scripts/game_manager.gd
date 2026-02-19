@@ -1342,12 +1342,12 @@ func _draw() -> void:
 				])
 				draw_colored_polygon(wing_pts_left, ecolor)
 				draw_colored_polygon(wing_pts_right, ecolor)
-				# Eyes
+			# Eyes
 				draw_circle(Vector2(ecx - s * 0.15, ecy - s * 0.1), s * 0.08, Color(0.1, 0.1, 0.1))
 				draw_circle(Vector2(ecx + s * 0.15, ecy - s * 0.1), s * 0.08, Color(0.1, 0.1, 0.1))
+			Enemy.Type.SKELETON:
 				# Detailed skull with nasal cavity and teeth
 				var s: float = float(TILE_SIZE) * 0.32
-				# Skull (circle)
 				draw_circle(Vector2(ecx, ecy - s * 0.2), s * 0.8, ecolor)
 				# Jaw with teeth
 				draw_rect(Rect2(ecx - s * 0.5, ecy + s * 0.2, s * 1.0, s * 0.6), ecolor)
@@ -1866,8 +1866,8 @@ func _draw() -> void:
 		# Level and XP
 		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - 100.0, stat_y), "Level: " + str(player_level), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
 		stat_y += line_height
-		var xp_needed: int = _get_xp_for_next_level()
-		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - 100.0, stat_y), "XP: " + str(player_xp) + "/" + str(xp_needed), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.6, 0.8, 1.0))
+		var xp_req: int = _get_xp_for_next_level()
+		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - 100.0, stat_y), "XP: " + str(player_xp) + "/" + str(xp_req), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.6, 0.8, 1.0))
 		stat_y += line_height * 2
 		
 		# Combat stats
