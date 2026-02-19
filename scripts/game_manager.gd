@@ -50,6 +50,8 @@ var equipped_accessory: Item = null
 # Inventory UI state
 var in_inventory: bool = false
 var inventory_selected_slot: int = 0  # 0=weapon, 1=armor, 2=accessory
+# Stats UI state
+var in_stats: bool = false
 var crit_chance: float = 0.05  # Base 5% crit
 var crit_multiplier: float = 1.5
 
@@ -627,7 +629,24 @@ func _unhandled_input(event: InputEvent) -> void:
 		if key_event.keycode == KEY_I:
 			in_inventory = !in_inventory
 			return
+	# Stats key (C)
+	if event is InputEventKey and event.is_pressed():
+		var key_event: InputEventKey = event as InputEventKey
+		if key_event.keycode == KEY_C:
+			in_stats = !in_stats
+			return
 
+	# Handle stats screen
+	if in_stats:
+		if event is InputEventKey and event.is_pressed():
+			var key_event: InputEventKey = event as InputEventKey
+			if key_event.keycode == KEY_C or key_event.keycode == KEY_ESCAPE:
+				in_stats = false
+				return
+		
+		# Don't process normal movement when in stats
+		return
+	
 	# Handle inventory navigation and actions
 	if in_inventory:
 		if event is InputEventKey and event.is_pressed():
@@ -707,6 +726,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				if in_inventory:
 					in_inventory = false
 					return
+				# Close stats when touching outside (mobile)
+				if in_stats:
+					in_stats = false
+					return
 				touch_start = touch_event.position
 				is_touching = true
 		else:
@@ -748,7 +771,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					else:
 						dir = Vector2i(0, -1)
 
-	if dir != Vector2i.ZERO and not in_inventory:
+	if dir != Vector2i.ZERO and not in_inventory and not in_stats:
 		_try_move(dir)
 
 
@@ -1828,6 +1851,61 @@ func _draw() -> void:
 		# Instructions
 		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - 100.0, slot_y + slot_height + 20), "Use arrows to select | SPACE to unequip | ESC to close", HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 12, Color(0.7, 0.7, 0.8))
 
+	# === STATS UI ===
+	if in_stats:
+		# Dark overlay
+		draw_rect(Rect2(0, 0, viewport_w, viewport_h), Color(0.0, 0.0, 0.0, 0.8))
+		
+		# Stats title
+		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - 40.0, 40.0), "STATS", HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 24, Color(0.6, 0.8, 1.0))
+		
+		# Stats info
+		var stat_y: float = 80.0
+		var line_height: float = 20.0
+		
+		# Level and XP
+		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - 100.0, stat_y), "Level: " + str(player_level), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
+		stat_y += line_height
+		var xp_needed: int = _get_xp_for_next_level()
+		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - 100.0, stat_y), "XP: " + str(player_xp) + "/" + str(xp_needed), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.6, 0.8, 1.0))
+		stat_y += line_height * 2
+		
+		# Combat stats
+		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - 100.0, stat_y), "HP: " + str(player_hp) + "/" + str(player_max_hp), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.9, 0.1, 0.1))
+		stat_y += line_height
+		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - 100.0, stat_y), "ATK: " + str(player_atk) + " (Base: " + str(base_atk) + ")", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.9, 0.6, 0.1))
+		stat_y += line_height
+		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - 100.0, stat_y), "DEF: " + str(player_def) + " (Base: " + str(base_def) + ")", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.3, 0.7, 0.9))
+		stat_y += line_height
+		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - 100.0, stat_y), "Crit Chance: " + str(int(crit_chance * 100)) + "%", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.8, 0.4, 0.9))
+		stat_y += line_height * 2
+		
+		# Equipment summary
+		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - 100.0, stat_y), "EQUIPMENT:", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1.0, 0.9, 0.3))
+		stat_y += line_height
+		if equipped_weapon:
+			draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - 100.0, stat_y), "Weapon: " + equipped_weapon.name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.8, 0.8, 0.9))
+			stat_y += line_height
+		else:
+			draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - 100.0, stat_y), "Weapon: None", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.5, 0.5, 0.6))
+			stat_y += line_height
+			
+		if equipped_armor:
+			draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - 100.0, stat_y), "Armor: " + equipped_armor.name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.8, 0.8, 0.9))
+			stat_y += line_height
+		else:
+			draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - 100.0, stat_y), "Armor: None", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.5, 0.5, 0.6))
+			stat_y += line_height
+			
+		if equipped_accessory:
+			draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - 100.0, stat_y), "Accessory: " + equipped_accessory.name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.8, 0.8, 0.9))
+			stat_y += line_height
+		else:
+			draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - 100.0, stat_y), "Accessory: None", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.5, 0.5, 0.6))
+			stat_y += line_height
+			
+		# Instructions
+		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - 100.0, stat_y + 20), "Press C to close", HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 12, Color(0.7, 0.7, 0.8))
 func _draw_message_log(hud_h: float) -> void:
 	if message_log.is_empty():
 		return
