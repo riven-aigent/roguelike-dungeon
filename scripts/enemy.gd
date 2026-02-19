@@ -1,7 +1,7 @@
 class_name Enemy
 
 const Item = preload("res://scripts/item.gd")
-enum Type { SLIME, BAT, SKELETON, ORC, WRAITH, FIRE_IMP, GOLEM, GHOST, SPIDER, MIMIC, BOSS_SLIME, BOSS_LICH, BOSS_DRAGON, VAMPIRE, TROLL, CRYSTAL_GOLEM, SHADOW, WISP, RAZOR_BEAST }
+enum Type { SLIME, BAT, SKELETON, ORC, WRAITH, FIRE_IMP, GOLEM, GHOST, SPIDER, MIMIC, BOSS_SLIME, BOSS_LICH, BOSS_DRAGON, VAMPIRE, TROLL, CRYSTAL_GOLEM, SHADOW, WISP, RAZOR_BEAST, NECROMANCER }
 
 var pos: Vector2i
 var hp: int
@@ -24,6 +24,7 @@ var ranged_attack: bool = false  # Fire Imp
 var web_attack: bool = false  # Spider: slows player
 var stealthed: bool = false  # Ghost: invisible until close
 var mimic_revealed: bool = false  # Mimic: disguised as item
+var can_resurrect: bool = false  # Necromancer: resurrect dead enemies
 
 # Loot drops
 var drop_chance: float = 0.0  # Chance to drop equipment
@@ -136,6 +137,11 @@ func setup(t: Type, position: Vector2i) -> void:
 			hp = 7; max_hp = 7; atk = 4; def = 1
 			name_str = "Razor Beast"; xp_value = 30
 			drop_chance = 0.25
+		Type.NECROMANCER:
+			hp = 12; max_hp = 12; atk = 3; def = 2
+			name_str = "Necromancer"; xp_value = 50
+			can_resurrect = true
+			drop_chance = 0.3
 
 func get_color() -> Color:
 	match type:
@@ -180,6 +186,8 @@ func get_color() -> Color:
 			return Color(0.9, 0.95, 0.4, 0.8)  # Glowing yellow
 		Type.RAZOR_BEAST:
 			return Color(0.7, 0.2, 0.3)  # Dark red
+		Type.NECROMANCER:
+			return Color(0.3, 0.1, 0.4)  # Dark purple
 	return Color.WHITE
 
 func take_damage(amount: int) -> int:

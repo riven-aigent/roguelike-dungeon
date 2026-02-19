@@ -786,6 +786,12 @@ func _process_single_enemy_turn(enemy: Enemy) -> void:
 			enemy.summon_timer = 0
 			_lich_summon(enemy)
 
+	# Necromancer: resurrect dead enemies every 4 turns
+	if enemy.can_resurrect:
+		enemy.summon_timer += 1
+		if enemy.summon_timer >= 4:
+			enemy.summon_timer = 0
+			_try_resurrect(enemy)
 	var dist: int = absi(enemy.pos.x - player_pos.x) + absi(enemy.pos.y - player_pos.y)
 
 	# Fire Imp ranged attack: if player is 2-3 tiles away in cardinal direction
@@ -834,6 +840,21 @@ func _lich_summon(lich: Enemy) -> void:
 			skel.setup(Enemy.Type.SKELETON, spos)
 			enemies.append(skel)
 			_add_log_message("Lich summons a Skeleton!")
+			return
+
+
+
+func _try_resurrect(necro: Enemy) -> void:
+	# Find a dead enemy position and resurrect as skeleton
+	var offsets: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
+		Vector2i(2, 0), Vector2i(-2, 0), Vector2i(0, 2), Vector2i(0, -2)]
+	for offset in offsets:
+		var spos: Vector2i = necro.pos + offset
+		if map_data.is_walkable(spos.x, spos.y) and _get_enemy_at(spos) == null and spos != player_pos:
+			var skel: Enemy = Enemy.new()
+			skel.setup(Enemy.Type.SKELETON, spos)
+			enemies.append(skel)
+			_add_log_message("Necromancer raises a Skeleton!")
 			return
 
 
@@ -1421,6 +1442,26 @@ func _draw() -> void:
 					Vector2(ecx + s * 1.0, ecy - s * 0.4),
 					Vector2(ecx + s * 0.6, ecy + s * 0.1)
 				]), Color(0.9, 0.9, 0.9))
+			Enemy.Type.NECROMANCER:
+				# Hooded figure with glowing hands
+				var s: float = float(TILE_SIZE) * 0.35
+				# Robe body
+				var pts: PackedVector2Array = PackedVector2Array([
+					Vector2(ecx, ecy - s * 0.9),
+					Vector2(ecx + s * 0.5, ecy - s * 0.3),
+					Vector2(ecx + s * 0.7, ecy + s * 0.8),
+					Vector2(ecx - s * 0.7, ecy + s * 0.8),
+					Vector2(ecx - s * 0.5, ecy - s * 0.3)
+				])
+				draw_colored_polygon(pts, ecolor)
+				# Hood shadow
+				draw_circle(Vector2(ecx, ecy - s * 0.5), s * 0.35, Color(0.1, 0.05, 0.15))
+				# Glowing eyes
+				draw_circle(Vector2(ecx - s * 0.12, ecy - s * 0.55), s * 0.08, Color(0.8, 0.2, 1.0))
+				draw_circle(Vector2(ecx + s * 0.12, ecy - s * 0.55), s * 0.08, Color(0.8, 0.2, 1.0))
+				# Glowing hands (magic)
+				draw_circle(Vector2(ecx - s * 0.6, ecy + s * 0.1), s * 0.15, Color(0.6, 0.1, 0.8, 0.7))
+				draw_circle(Vector2(ecx + s * 0.6, ecy + s * 0.1), s * 0.15, Color(0.6, 0.1, 0.8, 0.7))
 			Enemy.Type.BOSS_SLIME:
 				# Large blob with inner core
 				var s: float = float(TILE_SIZE) * 0.48
