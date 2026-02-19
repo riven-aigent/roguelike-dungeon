@@ -1547,6 +1547,23 @@ func _draw() -> void:
 		Color(0.1, 0.1, 0.1), 2.0)
 	# Highlight
 	draw_circle(Vector2(player_screen.x - ps * 0.3, player_screen.y - ps * 0.5), ps * 0.15, Color(0.9, 1.0, 0.9, 0.4))
+	# Sword (right side)
+	var sword_color: Color = Color(0.7, 0.7, 0.75)
+	draw_line(Vector2(player_screen.x + ps * 0.9, player_screen.y - ps * 0.2),
+		Vector2(player_screen.x + ps * 1.4, player_screen.y - ps * 0.8),
+		sword_color, 3.0)
+	# Sword handle
+	draw_line(Vector2(player_screen.x + ps * 0.85, player_screen.y - ps * 0.1),
+		Vector2(player_screen.x + ps * 1.0, player_screen.y - ps * 0.3),
+		Color(0.5, 0.3, 0.1), 2.0)
+	# Shield (left side)
+	var shield_pts: PackedVector2Array = PackedVector2Array([
+		Vector2(player_screen.x - ps * 0.9, player_screen.y - ps * 0.3),
+		Vector2(player_screen.x - ps * 1.1, player_screen.y),
+		Vector2(player_screen.x - ps * 0.9, player_screen.y + ps * 0.3),
+		Vector2(player_screen.x - ps * 0.7, player_screen.y)
+	])
+	draw_colored_polygon(shield_pts, Color(0.6, 0.5, 0.3))
 
 	# === HUD ===
 	var hud_h: float = 76.0
