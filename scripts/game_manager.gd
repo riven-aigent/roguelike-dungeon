@@ -2289,6 +2289,15 @@ func _player_attack(enemy: Enemy) -> void:
 		_handle_enemy_drops(enemy)
 		if enemy.is_boss:
 			_on_boss_defeated()
+	
+	# Lifesteal mechanic for Ring of Vampirism
+	if equipped_accessory != null and equipped_accessory.type == Item.Type.RING_VAMPIRE:
+		var lifesteal_amount: int = max(1, int(float(dmg) * 0.05))
+		var actual_heal: int = mini(lifesteal_amount, player_max_hp - player_hp)
+		if actual_heal > 0:
+			player_hp += actual_heal
+			_spawn_floating_text(player_pos, "+" + str(actual_heal) + " HP", Color(0.8, 0.2, 0.3))
+			_add_log_message("Lifesteal: +" + str(actual_heal) + " HP")
 
 func _handle_enemy_drops(enemy: Enemy) -> void:
 	if enemy.guaranteed_drop >= 0:
