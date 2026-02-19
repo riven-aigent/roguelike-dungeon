@@ -1831,7 +1831,60 @@ func _draw() -> void:
 			if enemy.is_boss:
 				# Boss name above HP bar
 				draw_string(ThemeDB.fallback_font, Vector2(bar_x, bar_y - 2.0), enemy.name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(1.0, 0.3, 0.3))
-
+	
+	# Draw traps (only if visible and triggered)
+	for trap in traps:
+		if not trap.visible:
+			continue
+		if not _is_visible(trap.pos):
+			continue
+		var tx: float = float(trap.pos.x * TILE_SIZE) + camera_offset.x
+		var ty: float = float(trap.pos.y * TILE_SIZE) + camera_offset.y
+		var tcx: float = tx + float(TILE_SIZE) / 2.0
+		var tcy: float = ty + float(TILE_SIZE) / 2.0
+		var tcolor: Color = trap.get_color()
+		var ts: float = float(TILE_SIZE) * 0.3
+		
+		match trap.type:
+			Trap.Type.SPIKES:
+				# Triangle spikes
+				for i in range(3):
+					var offset_x: float = (i - 1) * ts * 0.6
+					var pts: PackedVector2Array = PackedVector2Array([
+						Vector2(tcx + offset_x, tcy - ts * 0.5),
+						Vector2(tcx + offset_x - ts * 0.25, tcy + ts * 0.3),
+						Vector2(tcx + offset_x + ts * 0.25, tcy + ts * 0.3)
+					])
+					draw_colored_polygon(pts, tcolor)
+			Trap.Type.POISON_DART:
+				# Dart shape
+				draw_circle(Vector2(tcx, tcy), ts * 0.3, tcolor)
+				draw_rect(Rect2(tcx - ts * 0.1, tcy - ts * 0.5, ts * 0.2, ts * 0.5), tcolor)
+			Trap.Type.FIRE_VENT:
+				# Fire glow
+				draw_circle(Vector2(tcx, tcy), ts * 0.6, Color(1.0, 0.5, 0.1, 0.5))
+				draw_circle(Vector2(tcx, tcy), ts * 0.3, tcolor)
+			Trap.Type.TELEPORT:
+				# Swirl pattern
+				draw_circle(Vector2(tcx, tcy), ts * 0.5, tcolor)
+				draw_circle(Vector2(tcx, tcy), ts * 0.25, Color(0.3, 0.1, 0.5))
+			Trap.Type.ICE_PATCH:
+				# Ice crystals
+				draw_rect(Rect2(tcx - ts * 0.5, tcy - ts * 0.1, ts, ts * 0.2), tcolor)
+				draw_rect(Rect2(tcx - ts * 0.1, tcy - ts * 0.5, ts * 0.2, ts), tcolor)
+			Trap.Type.LAVA_CRACK:
+				# Crack in ground with glow
+				draw_circle(Vector2(tcx, tcy), ts * 0.4, Color(1.0, 0.3, 0.0, 0.7))
+				draw_rect(Rect2(tcx - ts * 0.3, tcy - ts * 0.05, ts * 0.6, ts * 0.1), tcolor)
+			Trap.Type.SHADOW_PIT:
+				# Dark pit
+				draw_circle(Vector2(tcx, tcy), ts * 0.5, Color(0.0, 0.0, 0.0, 0.8))
+				draw_circle(Vector2(tcx, tcy), ts * 0.3, tcolor)
+			Trap.Type.SPIRIT_WISP:
+				# Ghostly wisp
+				draw_circle(Vector2(tcx, tcy - ts * 0.2), ts * 0.3, tcolor)
+				draw_rect(Rect2(tcx - ts * 0.2, tcy, ts * 0.4, ts * 0.3), Color(tcolor.r, tcolor.g, tcolor.b, 0.5))
+	
 	# Draw player (knight-like shape)
 	var player_color: Color = color_player
 	if damage_flash_timer > 0:
