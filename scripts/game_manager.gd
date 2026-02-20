@@ -1859,6 +1859,25 @@ func _draw() -> void:
 				# Eyes - malevolent glow
 				draw_circle(Vector2(ecx - s * 0.2, ecy - s * 0.5), s * 0.1, Color(1.0, 0.3, 0.1))
 				draw_circle(Vector2(ecx + s * 0.2, ecy - s * 0.5), s * 0.1, Color(1.0, 0.3, 0.1))
+			Enemy.Type.SHADOW:
+				# Dark ghost with red eyes - phases through walls
+				var s: float = float(TILE_SIZE) * 0.38
+				# Wavy ghost body
+				var pts: PackedVector2Array = PackedVector2Array([
+					Vector2(ecx, ecy - s),
+					Vector2(ecx + s * 0.8, ecy - s * 0.5),
+					Vector2(ecx + s, ecy + s * 0.3),
+					Vector2(ecx + s * 0.6, ecy + s),
+					Vector2(ecx + s * 0.2, ecy + s * 0.7),
+					Vector2(ecx - s * 0.2, ecy + s),
+					Vector2(ecx - s * 0.6, ecy + s * 0.7),
+					Vector2(ecx - s, ecy + s * 0.3),
+					Vector2(ecx - s * 0.8, ecy - s * 0.5)
+				])
+				draw_colored_polygon(pts, ecolor)
+				# Red eyes
+				draw_circle(Vector2(ecx - s * 0.35, ecy - s * 0.2), 3.0, Color(1.0, 0.1, 0.1))
+				draw_circle(Vector2(ecx + s * 0.35, ecy - s * 0.2), 3.0, Color(1.0, 0.1, 0.1))
 			Enemy.Type.BOSS_SLIME:
 				# Large blob with inner core
 				var s: float = float(TILE_SIZE) * 0.48
