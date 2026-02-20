@@ -1332,6 +1332,20 @@ func _enemy_attack(enemy: Enemy) -> void:
 		_add_log_message("You're bleeding! (+" + str(2) + " stacks)")
 	
 	if player_hp <= 0:
+		# Check for PHOENIX boon - revive once
+		var has_phoenix: bool = false
+		for boon in boons:
+			if boon.type == BoonScript.Type.PHOENIX:
+				has_phoenix = true
+				boons.erase(boon)
+				break
+		
+		if has_phoenix:
+			player_hp = maxi(1, player_max_hp / 4)
+			_spawn_floating_text(player_pos, "PHOENIX!", Color(1.0, 0.5, 0.1))
+			_add_log_message("Phoenix boon revives you with " + str(player_hp) + " HP!")
+			return
+		
 		player_hp = 0
 		game_over = true
 		_add_log_message("You died!")
