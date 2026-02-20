@@ -9,6 +9,7 @@ enum Tile {
 	SHOP,
 	SECRET_WALL,  # Looks like wall but can be opened with key
 	SECRET_ROOM,  # Secret room floor
+	CURSED_VAULT, # High risk/reward room with elite enemies
 }
 
 var width: int
@@ -36,7 +37,7 @@ func set_tile(x: int, y: int, tile: int) -> void:
 
 func is_walkable(x: int, y: int) -> bool:
 	var t := get_tile(x, y)
-	return t == Tile.FLOOR or t == Tile.DOOR or t == Tile.STAIRS_DOWN or t == Tile.STAIRS_UP or t == Tile.SHOP or t == Tile.SECRET_ROOM
+	return t == Tile.FLOOR or t == Tile.DOOR or t == Tile.STAIRS_DOWN or t == Tile.STAIRS_UP or t == Tile.SHOP or t == Tile.SECRET_ROOM or t == Tile.CURSED_VAULT
 
 func get_random_floor_tile() -> Vector2i:
 	var floor_tiles: Array[Vector2i] = []

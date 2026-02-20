@@ -372,10 +372,11 @@ func _generate_floor() -> void:
 		revealed.clear()
 		explored.clear()
 		stairs_found.clear()
-		_spawn_enemies()
+	_spawn_enemies()
 		_spawn_items()
 		_spawn_traps()
 		_spawn_secret_room_items()
+		_spawn_cursed_vault_contents()
 		_update_visibility()
 		_update_camera()
 		_add_log_message("Floor " + str(current_floor))
@@ -677,9 +678,51 @@ func _spawn_secret_room_items() -> void:
 		for i in range(mini(item_count, offsets.size())):
 			var item_pos: Vector2i = secret_pos + offsets[i]
 			if map_data.get_tile(item_pos.x, item_pos.y) == TileMapData.Tile.SECRET_ROOM:
-				var item: Item = Item.new()
+			var item: Item = Item.new()
 				item.setup(good_items[randi() % good_items.size()], item_pos)
 				items.append(item)
+
+func _spawn_cursed_vault_contents() -> void:
+	# Spawn elite enemies and good loot in cursed vaults
+	var vault_positions: Array[Vector2i] = generator.get_cursed_vault_positions()
+	
+	for vault_pos in vault_positions:
+		# Spawn 1-2 elite enemies in each vault
+		var enemy_count: int = 1 + randi() % 2
+		var offsets: Array[Vector2i] = [
+			Vector2i(-1, -1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(1, 1),
+			Vector2i(0, 0), Vector2i(2, 0), Vector2i(-2, 0), Vector2i(0, 2), Vector2i(0, -2)
+		]
+		offsets.shuffle()
+		
+		var elite_types: Array = _get_types_for_floor(current_floor)
+		# Filter to stronger enemies only
+		var strong_types: Array = []
+		for t in elite_types:
+			if t != Enemy.Type.SLIME and t != Enemy.Type.BAT:
+				strong_types.append(t)
+		if strong_types.is_empty():
+			strong_types = [Enemy.Type.SKELETON]
+		
+		for i in range(mini(enemy_count, offsets.size())):
+			var enemy_pos: Vector2i = vault_pos + offsets[i]
+			if map_data.get_tile(enemy_pos.x, enemy_pos.y) == TileMapData.Tile.CURSED_VAULT:
+				var enemy: Enemy = Enemy.new()
+				enemy.setup(strong_types[randi() % strong_types.size()], enemy_pos)
+				enemy.is_elite = true  # Mark as elite for better loot
+				enemies.append(enemy)
+		
+		# Spawn guaranteed good loot
+		var loot_types: Array = [
+			Item.Type.STRENGTH_POTION, Item.Type.SHIELD_SCROLL,
+			Item.Type.RING_POWER, Item.Type.AMULET_LIFE,
+			Item.Type.GOLD, Item.Type.GOLD
+		]
+		var loot_pos: Vector2i = vault_pos + Vector2i(0, 1)
+		if map_data.get_tile(loot_pos.x, loot_pos.y) == TileMapData.Tile.CURSED_VAULT:
+			var item: Item = Item.new()
+			item.setup(loot_types[randi() % loot_types.size()], loot_pos)
+			items.append(item)
 
 func _update_visibility() -> void:
 	revealed.clear()
@@ -1416,8 +1459,10 @@ func _draw() -> void:
 					tile_color = color_floor
 			elif tile == TileMapData.Tile.DOOR:
 				tile_color = Color(0.6, 0.4, 0.1)
-			elif tile == TileMapData.Tile.SHOP:
+		elif tile == TileMapData.Tile.SHOP:
 				tile_color = Color(0.8, 0.7, 0.2)  # Gold/yellow color for shop
+			elif tile == TileMapData.Tile.CURSED_VAULT:
+				tile_color = Color(0.4, 0.1, 0.4)  # Dark purple for cursed vault
 			else:
 				tile_color = color_floor
 
@@ -2364,8 +2409,10 @@ func _draw_minimap() -> void:
 		elif tile == TileMapData.Tile.STAIRS_DOWN:
 			if stairs_found.has(tpos):
 				draw_rect(Rect2(px, py, ps + 1.0, ps + 1.0), Color(0.0, 0.9, 0.9))
-		elif tile == TileMapData.Tile.SHOP:
+	elif tile == TileMapData.Tile.SHOP:
 			draw_rect(Rect2(px, py, ps + 1.0, ps + 1.0), Color(0.8, 0.7, 0.2))  # Gold/yellow for shop
+		elif tile == TileMapData.Tile.CURSED_VAULT:
+			draw_rect(Rect2(px, py, ps + 1.0, ps + 1.0), Color(0.5, 0.1, 0.5))  # Purple for cursed vault
 
 	# Enemy dots on minimap (visible ones, bosses always if on boss floor)
 	for enemy in enemies:

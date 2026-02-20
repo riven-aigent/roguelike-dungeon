@@ -62,6 +62,10 @@ func generate(width: int = 60, height: int = 60, is_shop_floor: bool = false) ->
 	if randf() < 0.3 and rooms.size() >= 3:
 		_add_secret_room()
 	
+	# Add cursed vault (15% chance, floors 10+)
+	if randf() < 0.15 and rooms.size() >= 4:
+		_add_cursed_vault()
+	
 	return map_data
 
 func generate_boss_floor() -> TileMapData:
@@ -277,7 +281,74 @@ func _add_secret_room() -> void:
 		
 		map_data.set_tile(wall_x, wall_y, TileMapData.Tile.SECRET_WALL)
 		
-		secret_rooms.append(Rect2i(secret_x, secret_y, secret_w, secret_h))
+	secret_rooms.append(Rect2i(secret_x, secret_y, secret_w, secret_h))
+		return
+
+func _add_cursed_vault() -> void:
+	# Find a room to attach a cursed vault to
+	var room: Rect2i = rooms[randi() % rooms.size()]
+	
+	var directions: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+	directions.shuffle()
+	
+	for dir in directions:
+		var vault_w: int = 5
+		var vault_h: int = 5
+		var vault_x: int
+		var vault_y: int
+		
+		if dir.x > 0:
+			vault_x = room.position.x + room.size.x + 1
+			vault_y = room.position.y + randi() % maxi(room.size.y - vault_h + 1, 1)
+		elif dir.x < 0:
+			vault_x = room.position.x - vault_w - 1
+			vault_y = room.position.y + randi() % maxi(room.size.y - vault_h + 1, 1)
+		elif dir.y > 0:
+			vault_x = room.position.x + randi() % maxi(room.size.x - vault_w + 1, 1)
+			vault_y = room.position.y + room.size.y + 1
+		else:
+			vault_x = room.position.x + randi() % maxi(room.size.x - vault_w + 1, 1)
+			vault_y = room.position.y - vault_h - 1
+		
+		if vault_x < 2 or vault_x + vault_w >= map_data.width - 2:
+			continue
+		if vault_y < 2 or vault_y + vault_h >= map_data.height - 2:
+			continue
+		
+		var valid: bool = true
+		for y in range(vault_y - 1, vault_y + vault_h + 2):
+			for x in range(vault_x - 1, vault_x + vault_w + 2):
+				if map_data.get_tile(x, y) != TileMapData.Tile.WALL:
+					valid = false
+					break
+			if not valid:
+				break
+		
+		if not valid:
+			continue
+		
+		# Carve cursed vault
+		for y in range(vault_y, vault_y + vault_h):
+			for x in range(vault_x, vault_x + vault_w):
+				map_data.set_tile(x, y, TileMapData.Tile.CURSED_VAULT)
+		
+		# Place door
+		var door_x: int
+		var door_y: int
+		if dir.x > 0:
+			door_x = room.position.x + room.size.x
+			door_y = vault_y + vault_h / 2
+		elif dir.x < 0:
+			door_x = room.position.x - 1
+			door_y = vault_y + vault_h / 2
+		elif dir.y > 0:
+			door_x = vault_x + vault_w / 2
+			door_y = room.position.y + room.size.y
+		else:
+			door_x = vault_x + vault_w / 2
+			door_y = room.position.y - 1
+		
+		map_data.set_tile(door_x, door_y, TileMapData.Tile.DOOR)
 		return
 
 func get_secret_room_positions() -> Array[Vector2i]:
@@ -285,6 +356,14 @@ func get_secret_room_positions() -> Array[Vector2i]:
 	for room in secret_rooms:
 		# Return center of each secret room
 		positions.append(Vector2i(room.position.x + room.size.x / 2, room.position.y + room.size.y / 2))
+	return positions
+
+func get_cursed_vault_positions() -> Array[Vector2i]:
+	var positions: Array[Vector2i] = []
+	for y in range(map_data.height):
+		for x in range(map_data.width):
+			if map_data.get_tile(x, y) == TileMapData.Tile.CURSED_VAULT:
+				positions.append(Vector2i(x, y))
 	return positions
 
 func get_trap_positions(count: int, floor_num: int) -> Array[Vector2i]:
