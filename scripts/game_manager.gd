@@ -1317,6 +1317,15 @@ func _enemy_attack(enemy: Enemy) -> void:
 	_spawn_floating_text(player_pos, "-" + str(dmg), Color(1.0, 0.2, 0.2))
 	_add_log_message(enemy.name_str + " hits you for " + str(dmg) + " damage!")
 	
+	# Check for GLASS_CANNON affliction - take double damage
+	for affliction in afflictions:
+		if affliction.type == AfflictionScript.Type.GLASS_CANNON:
+			var extra_dmg: int = dmg  # Double damage = same amount again
+			player_hp -= extra_dmg
+			_spawn_floating_text(player_pos, "-" + str(extra_dmg) + " (Glass)", Color(0.9, 0.9, 0.9))
+			_add_log_message("Glass Cannon doubles the damage!")
+			break
+	
 	# Check for damage reflection from boons
 	var total_reflect: float = 0.0
 	for boon in boons:
