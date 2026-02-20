@@ -128,6 +128,7 @@ func setup(t: Type, position: Vector2i) -> void:
 			hp = 6; max_hp = 6; atk = 5; def = 0
 			name_str = "Shadow"; xp_value = 35
 			phase_through_walls = true
+			stealthed = true  # Invisible until adjacent or damaged
 			drop_chance = 0.15
 		Type.WISP:
 			hp = 5; max_hp = 5; atk = 3; def = 0
@@ -210,10 +211,16 @@ func take_damage(amount: int) -> int:
 	# Reveal ghost when damaged
 	if type == Type.GHOST and stealthed:
 		stealthed = false
+	# Reveal shadow when damaged
+	if type == Type.SHADOW and stealthed:
+		stealthed = false
 	return dmg
 
 func is_visible_to_player() -> bool:
 	# Ghost is invisible until adjacent or damaged
 	if type == Type.GHOST and stealthed:
+		return false
+	# Shadow is invisible until adjacent or damaged
+	if type == Type.SHADOW and stealthed:
 		return false
 	return true

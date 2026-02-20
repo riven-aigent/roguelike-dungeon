@@ -1114,7 +1114,12 @@ func _process_single_enemy_turn(enemy: Enemy) -> void:
 			enemy.summon_timer = 0
 			_try_resurrect(enemy)
 	var dist: int = absi(enemy.pos.x - player_pos.x) + absi(enemy.pos.y - player_pos.y)
-
+	
+	# Reveal stealthed enemies when adjacent
+	if enemy.stealthed and dist <= 1:
+		enemy.stealthed = false
+		_add_log_message(enemy.name_str + " emerges from the shadows!")
+	
 	# Fire Imp ranged attack: if player is 2-3 tiles away in cardinal direction
 	if enemy.ranged_attack and dist >= 2 and dist <= 3:
 		if _try_ranged_attack(enemy):
