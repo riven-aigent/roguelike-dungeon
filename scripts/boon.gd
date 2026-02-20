@@ -17,6 +17,8 @@ enum Type {
 	IRON_WILL,    # Immune to affliction effects (not application)
 	BERSERKER,    # +3 ATK, +3 DEF when below 50% HP
 	PHOENIX,      # Revive once with 25% HP on death
+	SHADOW_WALK,  # 20% chance to dodge attacks
+	MIRROR_SHIELD # Reflect 25% of damage taken
 }
 
 var type: Type
@@ -74,6 +76,14 @@ func setup(t: Type) -> void:
 			name_str = "Phoenix"
 			description = "Revive once on death"
 			boon_color = Color(1.0, 0.5, 0.1)
+		Type.SHADOW_WALK:
+			name_str = "Shadow Walk"
+			description = "20% dodge chance"
+			boon_color = Color(0.3, 0.2, 0.5)
+		Type.MIRROR_SHIELD:
+			name_str = "Mirror Shield"
+			description = "Reflect 25% damage taken"
+			boon_color = Color(0.7, 0.8, 0.9)
 
 func get_stat_modifiers() -> Dictionary:
 	var mods: Dictionary = {
@@ -109,6 +119,10 @@ func get_stat_modifiers() -> Dictionary:
 			mods["affliction_immune"] = true
 		Type.PHOENIX:
 			mods["revive"] = true
+		Type.SHADOW_WALK:
+			mods["dodge_chance"] = 0.2
+		Type.MIRROR_SHIELD:
+			mods["reflect_damage"] = 0.25
 	
 	return mods
 

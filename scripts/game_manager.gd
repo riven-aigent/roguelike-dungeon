@@ -2780,6 +2780,9 @@ func _apply_random_boon() -> void:
 	if current_floor >= 10:
 		available_boons.append(BoonScript.Type.IRON_WILL)
 		available_boons.append(BoonScript.Type.PHOENIX)
+		available_boons.append(BoonScript.Type.SHADOW_WALK)
+	if current_floor >= 15:
+		available_boons.append(BoonScript.Type.MIRROR_SHIELD)
 	
 	var boon: BoonScript = BoonScript.new()
 	boon.setup(available_boons[randi() % available_boons.size()])
