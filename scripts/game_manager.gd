@@ -88,6 +88,11 @@ const AfflictionScript = preload("res://scripts/affliction.gd")
 var afflictions: Array = []  # Array of Affliction
 var affliction_turn_counter: int = 0
 
+# Boons
+const BoonScript = preload("res://scripts/boon.gd")
+var boons: Array = []  # Array of Boon
+var boon_turn_counter: int = 0
+
 # Score
 var score: int = 0
 
@@ -219,6 +224,14 @@ func _recalculate_stats() -> void:
 		player_max_hp += mods["max_hp_mod"]
 		player_atk += mods["atk_mod"]
 		player_def += mods["def_mod"]
+	
+	# Apply boon modifiers
+	for boon in boons:
+		var mods: Dictionary = boon.get_stat_modifiers()
+		player_max_hp += mods["max_hp_mod"]
+		player_atk += mods["atk_mod"]
+		player_def += mods["def_mod"]
+		crit_chance += mods["crit_bonus"]
 	
 	# Cap HP if it decreased
 	if player_hp > player_max_hp:
@@ -522,7 +535,13 @@ func _spawn_items() -> void:
 	if current_floor >= 12:
 		if randf() < 0.12:  # 12% chance
 			base_items.append(Item.Type.TAINTED_GEM)
-	# Spawn 3-6 items per floor
+	# Boon items (shrines, rare)
+	if current_floor >= 3:
+		if randf() < 0.1:  # 10% chance
+			base_items.append(Item.Type.ANCIENT_SHRINE)
+	if current_floor >= 6:
+		if randf() < 0.08:  # 8% chance
+			base_items.append(Item.Type.PURIFYING_ELIXIR)
 	# Spawn 3-6 items per floor
 	var item_count: int = 3 + (randi() % 4)
 	
@@ -1490,6 +1509,46 @@ func _draw() -> void:
 				# Dark aura
 				var pulse: float = 0.5 + 0.3 * sin(float(turn_count) * 0.25)
 				draw_circle(Vector2(icx, icy), s * 1.2, Color(0.4, 0.1, 0.3, pulse * 0.25))
+			Item.Type.ANCIENT_SHRINE:
+				var s: float = float(TILE_SIZE) * 0.3
+				# Shrine base
+				draw_rect(Rect2(icx - s * 0.6, icy - s * 0.3, s * 1.2, s * 0.8), Color(0.5, 0.45, 0.4))
+				# Glowing orb on top
+				draw_circle(Vector2(icx, icy - s * 0.5), s * 0.35, Color(0.4, 0.8, 0.6))
+				# Light rays
+				var ray_pulse: float = 0.6 + 0.3 * sin(float(turn_count) * 0.2)
+				draw_line(Vector2(icx, icy - s * 0.5), Vector2(icx - s * 0.5, icy - s), Color(0.5, 0.9, 0.7, ray_pulse), 2)
+				draw_line(Vector2(icx, icy - s * 0.5), Vector2(icx + s * 0.5, icy - s), Color(0.5, 0.9, 0.7, ray_pulse), 2)
+			Item.Type.PURIFYING_ELIXIR:
+				var s: float = float(TILE_SIZE) * 0.25
+				# Bottle
+				draw_rect(Rect2(icx - s * 0.4, icy - s * 0.2, s * 0.8, s * 1.0), Color(0.6, 0.7, 0.8))
+				# Liquid inside
+				draw_rect(Rect2(icx - s * 0.3, icy + s * 0.1, s * 0.6, s * 0.6), Color(0.3, 0.9, 0.5))
+				# Cork
+				draw_rect(Rect2(icx - s * 0.2, icy - s * 0.5, s * 0.4, s * 0.3), Color(0.6, 0.4, 0.3))
+				# Sparkle
+				var sparkle: float = 0.5 + 0.5 * sin(float(turn_count) * 0.4)
+				draw_circle(Vector2(icx + s * 0.2, icy - s * 0.3), s * 0.1, Color(1.0, 1.0, 1.0, sparkle))
+			Item.Type.SACRED_FLAME:
+				var s: float = float(TILE_SIZE) * 0.3
+				# Flame base
+				draw_rect(Rect2(icx - s * 0.3, icy + s * 0.3, s * 0.6, s * 0.4), Color(0.4, 0.35, 0.3))
+				# Animated flame
+				var flame_height: float = s * (0.8 + 0.2 * sin(float(turn_count) * 0.5))
+				var flame_pts: PackedVector2Array = PackedVector2Array([
+					Vector2(icx, icy - flame_height),
+					Vector2(icx + s * 0.4, icy + s * 0.3),
+					Vector2(icx - s * 0.4, icy + s * 0.3)
+				])
+				draw_colored_polygon(flame_pts, Color(1.0, 0.6, 0.2))
+				# Inner flame
+				var inner_pts: PackedVector2Array = PackedVector2Array([
+					Vector2(icx, icy - flame_height * 0.7),
+					Vector2(icx + s * 0.2, icy + s * 0.2),
+					Vector2(icx - s * 0.2, icy + s * 0.2)
+				])
+				draw_colored_polygon(inner_pts, Color(1.0, 0.9, 0.4))
 			_:  # Default item (gold, keys, etc)
 				var s: float = float(TILE_SIZE) * 0.25
 				draw_circle(Vector2(icx, icy), s, icolor)
@@ -2038,7 +2097,7 @@ func _draw() -> void:
 	draw_rect(Rect2(bar_start_x, xp_bar_y, bar_w, 10.0), Color(0.1, 0.1, 0.2))
 	draw_rect(Rect2(bar_start_x, xp_bar_y, bar_w * xp_ratio, 10.0), Color(0.3, 0.5, 1.0))
 	
-	# === CURSES DISPLAY ===
+	# === AFFLICTIONS DISPLAY ===
 	if afflictions.size() > 0:
 		var affliction_x: float = 10.0
 		var affliction_y: float = 64.0
@@ -2047,6 +2106,17 @@ func _draw() -> void:
 			draw_string(ThemeDB.fallback_font, Vector2(affliction_x + 10, affliction_y), affliction.name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, affliction.affliction_color)
 			affliction_x += 70
 			if affliction_x > viewport_w - 80:
+				break
+	
+	# === BOONS DISPLAY ===
+	if boons.size() > 0:
+		var boon_x: float = 10.0
+		var boon_y: float = 78.0
+		for boon in boons:
+			draw_rect(Rect2(boon_x, boon_y - 8, 6, 6), boon.boon_color)
+			draw_string(ThemeDB.fallback_font, Vector2(boon_x + 10, boon_y), boon.name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, boon.boon_color)
+			boon_x += 70
+			if boon_x > viewport_w - 80:
 				break
 
 	# === MESSAGE LOG ===
@@ -2485,6 +2555,20 @@ func _check_item_pickup() -> void:
 							revealed[enemy.pos] = true
 					_spawn_floating_text(player_pos, "AFFLICTED!", Color(0.5, 0.1, 0.3))
 					_add_log_message("Tainted Gem! All enemies revealed but you were afflicted!")
+				Item.Type.ANCIENT_SHRINE:
+					_apply_random_boon()
+					_spawn_floating_text(player_pos, "BOON!", Color(0.3, 0.8, 0.5))
+					_add_log_message("Ancient Shrine grants you a boon!")
+				Item.Type.PURIFYING_ELIXIR:
+					afflictions.clear()
+					_recalculate_stats()
+					_spawn_floating_text(player_pos, "PURIFIED!", Color(0.5, 0.9, 0.5))
+					_add_log_message("All afflictions cleansed!")
+				Item.Type.SACRED_FLAME:
+					# Temporary ATK boost for current floor
+					player_atk += 2
+					_spawn_floating_text(player_pos, "+2 ATK!", Color(1.0, 0.6, 0.2))
+					_add_log_message("Sacred Flame empowers you! +2 ATK this floor!")
 			score = _calculate_score()
 			return
 
@@ -2520,6 +2604,33 @@ func _apply_random_affliction() -> void:
 	afflictions.append(affliction)
 	_recalculate_stats()
 	_add_log_message("Afflicted with " + affliction.name_str + "! " + affliction.description)
+
+func _apply_random_boon() -> void:
+	# Choose boon based on floor depth
+	var available_boons: Array = []
+	
+	# Minor boons (always available)
+	available_boons.append(BoonScript.Type.VIGOR)
+	available_boons.append(BoonScript.Type.STRENGTH)
+	available_boons.append(BoonScript.Type.FORTITUDE)
+	available_boons.append(BoonScript.Type.SWIFT)
+	
+	# Major boons (floor 5+)
+	if current_floor >= 5:
+		available_boons.append(BoonScript.Type.REGENERATION)
+		available_boons.append(BoonScript.Type.LUCK)
+		available_boons.append(BoonScript.Type.INSIGHT)
+	
+	# Special boons (floor 10+)
+	if current_floor >= 10:
+		available_boons.append(BoonScript.Type.IRON_WILL)
+		available_boons.append(BoonScript.Type.PHOENIX)
+	
+	var boon: BoonScript = BoonScript.new()
+	boon.setup(available_boons[randi() % available_boons.size()])
+	boons.append(boon)
+	_recalculate_stats()
+	_add_log_message("Granted " + boon.name_str + "! " + boon.description)
 
 func _process_afflictions() -> void:
 	# Process affliction effects each turn
