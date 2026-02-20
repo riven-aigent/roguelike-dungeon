@@ -438,6 +438,7 @@ func _get_types_for_floor(floor_num: int) -> Array:
 	return types
 
 func _spawn_enemies() -> void:
+func _spawn_enemies() -> void:
 	enemies.clear()
 	var count: int = 3 + (randi() % 4)  # 3-6 enemies
 	# Scale count with floor
@@ -446,9 +447,15 @@ func _spawn_enemies() -> void:
 	var valid_types: Array = _get_types_for_floor(current_floor)
 	if valid_types.is_empty():
 		return
-
+	
+	# HAUNTED affliction: 15% extra chance for ghost enemies
+	var haunted_bonus: float = 0.0
+	for affliction in afflictions:
+		if affliction.type == AfflictionScript.Type.HAUNTED:
+			haunted_bonus = affliction.get_ghost_spawn_bonus()
+			break
+	
 	var occupied: Dictionary = {}
-	occupied[player_pos] = true
 	for y in range(map_data.height):
 		for x in range(map_data.width):
 			if map_data.get_tile(x, y) == TileMapData.Tile.STAIRS_DOWN:
@@ -464,7 +471,11 @@ func _spawn_enemies() -> void:
 		var dist: int = absi(pos.x - player_pos.x) + absi(pos.y - player_pos.y)
 		if dist < 5:
 			continue
-		var t: int = valid_types[randi() % valid_types.size()]
+	var t: int = valid_types[randi() % valid_types.size()]
+		# HAUNTED affliction: extra chance for ghost enemies
+		if haunted_bonus > 0.0 and Enemy.Type.GHOST in valid_types:
+			if randf() < haunted_bonus:
+				t = Enemy.Type.GHOST
 		var enemy: Enemy = Enemy.new()
 		enemy.setup(t, pos)
 		# Elite chance increases with floor
