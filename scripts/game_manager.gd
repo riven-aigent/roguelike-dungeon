@@ -60,6 +60,7 @@ var poison_turns: int = 0
 var burn_turns: int = 0
 var slow_turns: int = 0
 var bleed_stacks: int = 0  # Bleed: damage per turn, stacks
+var immobilized_turns: int = 0  # Can't move
 var poison_damage_flash: float = 0.0
 var burn_damage_flash: float = 0.0
 var bleed_damage_flash: float = 0.0
@@ -636,8 +637,10 @@ func _spawn_traps() -> void:
 					trap_types.append(Trap.Type.TELEPORT)
 		if current_floor >= 8:
 			trap_types.append(Trap.Type.TELEPORT)
-		if current_floor >= 12:
+	if current_floor >= 12:
 			trap_types.append(Trap.Type.SPIRIT_WISP)
+		if current_floor >= 14:
+			trap_types.append(Trap.Type.BEAR_TRAP)
 		# Themed traps based on floor theme
 		match current_theme:
 			FloorTheme.ICE:
@@ -1023,11 +1026,17 @@ func _process_status_effects() -> void:
 			score = _calculate_score()
 			_save_on_death()
 	
-	# Slow effect
+# Slow effect
 	if slow_turns > 0:
 		slow_turns -= 1
 		if slow_turns == 0:
 			_add_log_message("Slow effect wore off!")
+	
+	# Immobilized effect
+	if immobilized_turns > 0:
+		immobilized_turns -= 1
+		if immobilized_turns == 0:
+			_add_log_message("You can move again!")
 	
 	# Bleed damage (stacks)
 	if bleed_stacks > 0:
@@ -2085,11 +2094,24 @@ func _draw() -> void:
 				# Dark pit
 				draw_circle(Vector2(tcx, tcy), ts * 0.5, Color(0.0, 0.0, 0.0, 0.8))
 				draw_circle(Vector2(tcx, tcy), ts * 0.3, tcolor)
-			Trap.Type.SPIRIT_WISP:
+		Trap.Type.SPIRIT_WISP:
 				# Ghostly wisp
 				draw_circle(Vector2(tcx, tcy - ts * 0.2), ts * 0.3, tcolor)
 				draw_rect(Rect2(tcx - ts * 0.2, tcy, ts * 0.4, ts * 0.3), Color(tcolor.r, tcolor.g, tcolor.b, 0.5))
-	
+			Trap.Type.BEAR_TRAP:
+				# Metal jaws
+				draw_rect(Rect2(tcx - ts * 0.4, tcy - ts * 0.1, ts * 0.8, ts * 0.2), tcolor)
+				draw_polygon(PackedVector2Array([
+					Vector2(tcx - ts * 0.4, tcy - ts * 0.1),
+					Vector2(tcx - ts * 0.3, tcy - ts * 0.35),
+					Vector2(tcx - ts * 0.2, tcy - ts * 0.1)
+				]), PackedColorArray([tcolor, tcolor, tcolor]))
+				draw_polygon(PackedVector2Array([
+					Vector2(tcx + ts * 0.4, tcy - ts * 0.1),
+					Vector2(tcx + ts * 0.3, tcy - ts * 0.35),
+					Vector2(tcx + ts * 0.2, tcy - ts * 0.1)
+				]), PackedColorArray([tcolor, tcolor, tcolor]))
+
 	# Draw player (knight-like shape)
 	var player_color: Color = color_player
 	if damage_flash_timer > 0:
@@ -2499,6 +2521,11 @@ func _draw_dpad() -> void:
 				]), arrow_color)
 
 func _try_move(dir: Vector2i) -> void:
+	# Check if immobilized
+	if immobilized_turns > 0:
+		_add_log_message("You're immobilized! Can't move.")
+		return
+	
 	# Process status effects at start of turn
 	_process_status_effects()
 	
@@ -2884,10 +2911,16 @@ func _trigger_trap(trap: Trap) -> void:
 			_teleport_random()
 			damage_flash_timer = 0.3
 			_add_log_message("Shadow pit! -" + str(dmg) + " HP, teleported!")
-		Trap.Type.SPIRIT_WISP:
+	Trap.Type.SPIRIT_WISP:
 			var xp_drain: int = mini(player_xp, 10)
 			player_xp -= xp_drain
 			_add_log_message("Spirit wisp! -" + str(xp_drain) + " XP drained!")
+		Trap.Type.BEAR_TRAP:
+			var dmg: int = maxi(1, 4 - player_def)
+			player_hp -= dmg
+			immobilized_turns = 2
+			damage_flash_timer = 0.3
+			_add_log_message("Bear trap! -" + str(dmg) + " HP, immobilized for 2 turns!")
 	if player_hp <= 0:
 		player_hp = 0
 		game_over = true
