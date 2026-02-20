@@ -2847,9 +2847,20 @@ func _apply_random_boon() -> void:
 	_add_log_message("Granted " + boon.name_str + "! " + boon.description)
 
 func _process_afflictions() -> void:
+	# Check for IRON_WILL boon - immune to affliction effects
+	var has_iron_will: bool = false
+	for boon in boons:
+		if boon.type == BoonScript.Type.IRON_WILL:
+			has_iron_will = true
+			break
+	
 	# Process affliction effects each turn
 	for affliction in afflictions:
 		affliction.increment_turn()
+		
+		# IRON_WILL prevents affliction effects
+		if has_iron_will:
+			continue
 		
 		# Check for slow effect
 		if affliction.should_trigger_slow():
