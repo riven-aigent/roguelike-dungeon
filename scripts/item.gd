@@ -3,7 +3,7 @@ class_name Item
 enum Type { 
 	HEALTH_POTION, 
 	STRENGTH_POTION, 
-	SHIELD_SCROLL, 
+	SHIELD_SCROLL,
 	GOLD,
 	REVIVAL_AMULET,
 	TELEPORT_SCROLL,
@@ -15,6 +15,9 @@ enum Type {
 	FIRE_BOMB,     # Damages all enemies in 3x3 area
 	FROST_SCROLL,  # Freezes all visible enemies for 3 turns
 	SHADOW_STEP,   # Teleport through walls to visible tile
+	# Cursed items
+	CURSED_TOME,   # Applies a random curse but gives 50 XP
+	CURSED_GEM,    # Applies a curse but reveals all enemies on floor
 	# Equipment
 	SWORD,         # +2 ATK
 	AXE,           # +3 ATK, -1 DEF
@@ -85,6 +88,11 @@ func setup(t: Type, position: Vector2i) -> void:
 			name_str = "Frost Scroll"
 		Type.SHADOW_STEP:
 			name_str = "Shadow Step"
+		# Cursed items
+		Type.CURSED_TOME:
+			name_str = "Cursed Tome"
+		Type.CURSED_GEM:
+			name_str = "Cursed Gem"
 		# Equipment
 		Type.SWORD:
 			name_str = "Iron Sword"
@@ -179,6 +187,11 @@ func get_color() -> Color:
 			return Color(0.5, 0.8, 1.0)  # Ice blue
 		Type.SHADOW_STEP:
 			return Color(0.3, 0.2, 0.5)  # Dark purple
+		# Cursed items
+		Type.CURSED_TOME:
+			return Color(0.4, 0.1, 0.5)  # Dark purple
+		Type.CURSED_GEM:
+			return Color(0.5, 0.1, 0.3)  # Dark red-purple
 		# Equipment colors
 		Type.SWORD:
 			return Color(0.7, 0.7, 0.8)  # Silver

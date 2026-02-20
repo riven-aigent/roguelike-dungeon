@@ -83,6 +83,11 @@ var items: Array = []  # Array of Item
 var gold_collected: int = 0
 var shop_ui: ShopUI
 
+# Curses
+const CurseScript = preload("res://scripts/curse.gd")
+var curses: Array = []  # Array of Curse
+var curse_turn_counter: int = 0
+
 # Score
 var score: int = 0
 
@@ -188,7 +193,7 @@ func _apply_persistent_upgrades() -> void:
 	_recalculate_stats()
 
 func _recalculate_stats() -> void:
-	# Recalculate total stats from base + equipment
+	# Recalculate total stats from base + equipment + curses
 	player_atk = base_atk
 	player_def = base_def
 	player_max_hp = base_max_hp
@@ -207,6 +212,13 @@ func _recalculate_stats() -> void:
 		player_def += equipped_accessory.def_bonus
 		player_max_hp += equipped_accessory.hp_bonus
 		crit_chance += equipped_accessory.crit_bonus
+	
+	# Apply curse modifiers
+	for curse in curses:
+		var mods: Dictionary = curse.get_stat_modifiers()
+		player_max_hp += mods["max_hp_mod"]
+		player_atk += mods["atk_mod"]
+		player_def += mods["def_mod"]
 	
 	# Cap HP if it decreased
 	if player_hp > player_max_hp:
@@ -503,6 +515,14 @@ func _spawn_items() -> void:
 		base_items.append(Item.Type.FROST_SCROLL)
 	if current_floor >= 13:
 		base_items.append(Item.Type.SHADOW_STEP)
+	# Cursed items (rare, high floors)
+	if current_floor >= 8:
+		if randf() < 0.15:  # 15% chance to have a cursed item
+			base_items.append(Item.Type.CURSED_TOME)
+	if current_floor >= 12:
+		if randf() < 0.12:  # 12% chance
+			base_items.append(Item.Type.CURSED_GEM)
+	# Spawn 3-6 items per floor
 	# Spawn 3-6 items per floor
 	var item_count: int = 3 + (randi() % 4)
 	
@@ -1442,6 +1462,37 @@ func _draw() -> void:
 					Vector2(icx - s * 0.2, icy + s * 0.3)
 				])
 				draw_colored_polygon(flame_pts, Color(1.0, 0.5, 0.1))
+			Item.Type.CURSED_TOME:
+				var s: float = float(TILE_SIZE) * 0.3
+				# Book shape
+				draw_rect(Rect2(icx - s * 0.7, icy - s * 0.5, s * 1.4, s * 1.0), icolor)
+				# Dark pages
+				draw_rect(Rect2(icx - s * 0.5, icy - s * 0.35, s * 1.0, s * 0.7), Color(0.15, 0.08, 0.2))
+				# Glowing rune
+				draw_circle(Vector2(icx, icy), s * 0.15, Color(0.8, 0.2, 1.0))
+				# Pulsing aura
+				var pulse: float = 0.5 + 0.3 * sin(float(turn_count) * 0.3)
+				draw_circle(Vector2(icx, icy), s * 0.9, Color(0.5, 0.1, 0.6, pulse * 0.3))
+			Item.Type.CURSED_GEM:
+				var s: float = float(TILE_SIZE) * 0.25
+				# Gem shape (hexagon-ish)
+				var gem_pts: PackedVector2Array = PackedVector2Array([
+					Vector2(icx, icy - s),
+					Vector2(icx + s * 0.8, icy - s * 0.4),
+					Vector2(icx + s * 0.8, icy + s * 0.4),
+					Vector2(icx, icy + s),
+					Vector2(icx - s * 0.8, icy + s * 0.4),
+					Vector2(icx - s * 0.8, icy - s * 0.4)
+				])
+				draw_colored_polygon(gem_pts, icolor)
+				# Inner glow
+				draw_circle(Vector2(icx, icy), s * 0.3, Color(0.9, 0.3, 0.5, 0.7))
+				# Dark aura
+				var pulse: float = 0.5 + 0.3 * sin(float(turn_count) * 0.25)
+				draw_circle(Vector2(icx, icy), s * 1.2, Color(0.4, 0.1, 0.3, pulse * 0.25))
+			_:  # Default item (gold, keys, etc)
+				var s: float = float(TILE_SIZE) * 0.25
+				draw_circle(Vector2(icx, icy), s, icolor)
 
 	# Draw enemies
 	for enemy in enemies:
@@ -1986,8 +2037,17 @@ func _draw() -> void:
 	xp_ratio = clampf(xp_ratio, 0.0, 1.0)
 	draw_rect(Rect2(bar_start_x, xp_bar_y, bar_w, 10.0), Color(0.1, 0.1, 0.2))
 	draw_rect(Rect2(bar_start_x, xp_bar_y, bar_w * xp_ratio, 10.0), Color(0.3, 0.5, 1.0))
-
-
+	
+	# === CURSES DISPLAY ===
+	if curses.size() > 0:
+		var curse_x: float = 10.0
+		var curse_y: float = 64.0
+		for curse in curses:
+			draw_rect(Rect2(curse_x, curse_y - 8, 6, 6), curse.curse_color)
+			draw_string(ThemeDB.fallback_font, Vector2(curse_x + 10, curse_y), curse.name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, curse.curse_color)
+			curse_x += 70
+			if curse_x > viewport_w - 80:
+				break
 
 	# === MESSAGE LOG ===
 	_draw_message_log(hud_h)
@@ -2329,6 +2389,7 @@ func _try_move(dir: Vector2i) -> void:
 
 	# Enemy turn after player moves
 	turn_count += 1
+	_process_curses()
 	_enemy_turn()
 	_update_visibility()
 	_update_camera()
@@ -2411,8 +2472,73 @@ func _check_item_pickup() -> void:
 					_equip_item(item, "armor")
 				Item.Type.RING_POWER, Item.Type.AMULET_LIFE, Item.Type.BOOTS_SPEED, Item.Type.RING_VAMPIRE, Item.Type.AMULET_FURY:
 					_equip_item(item, "accessory")
+				Item.Type.CURSED_TOME:
+					_apply_random_curse()
+					player_xp += 50
+					_spawn_floating_text(player_pos, "+50 XP (CURSED)", Color(0.6, 0.2, 0.8))
+					_add_log_message("Cursed Tome! Gained 50 XP but was cursed!")
+				Item.Type.CURSED_GEM:
+					_apply_random_curse()
+					# Reveal all enemies on floor
+					for enemy in enemies:
+						if enemy.alive:
+							revealed[enemy.pos] = true
+					_spawn_floating_text(player_pos, "CURSED!", Color(0.5, 0.1, 0.3))
+					_add_log_message("Cursed Gem! All enemies revealed but you were cursed!")
 			score = _calculate_score()
 			return
+
+func _apply_random_curse() -> void:
+	# Choose curse based on floor depth
+	var available_curses: Array = []
+	
+	# Minor curses (floor 5+)
+	if current_floor >= 5:
+		available_curses.append(CurseScript.Type.FRAIL)
+		available_curses.append(CurseScript.Type.WEAKNESS)
+		available_curses.append(CurseScript.Type.CLUMSY)
+		available_curses.append(CurseScript.Type.HEAVY)
+	
+	# Major curses (floor 10+)
+	if current_floor >= 10:
+		available_curses.append(CurseScript.Type.DECAY)
+		available_curses.append(CurseScript.Type.HAUNTED)
+		available_curses.append(CurseScript.Type.SHADOWED)
+		available_curses.append(CurseScript.Type.CURSED_GOLD)
+	
+	# Special curses (floor 15+)
+	if current_floor >= 15:
+		available_curses.append(CurseScript.Type.VAMPIRIC)
+		available_curses.append(CurseScript.Type.BERSERKER)
+		available_curses.append(CurseScript.Type.GLASS_CANNON)
+	
+	if available_curses.is_empty():
+		available_curses.append(CurseScript.Type.FRAIL)  # Fallback
+	
+	var curse: CurseScript = CurseScript.new()
+	curse.setup(available_curses[randi() % available_curses.size()])
+	curses.append(curse)
+	_recalculate_stats()
+	_add_log_message("Afflicted with " + curse.name_str + "! " + curse.description)
+
+func _process_curses() -> void:
+	# Process curse effects each turn
+	for curse in curses:
+		curse.increment_turn()
+		
+		# Check for slow effect
+		if curse.should_trigger_slow():
+			slow_turns = maxi(slow_turns, 3)
+			_add_log_message("Heavy curse slows you!")
+		
+		# Check for decay damage
+		var decay_dmg: int = curse.should_trigger_decay()
+		if decay_dmg > 0:
+			player_hp -= decay_dmg
+			_spawn_floating_text(player_pos, "-" + str(decay_dmg) + " HP", Color(0.5, 0.2, 0.5))
+			_add_log_message(curse.name_str + " drains you!")
+			if player_hp <= 0:
+				game_over = true
 
 func _equip_item(item: Item, slot: String) -> void:
 	item.collected = true  # Mark as collected so it doesn't appear on ground
