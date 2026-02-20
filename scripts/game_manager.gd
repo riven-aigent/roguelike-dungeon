@@ -242,9 +242,15 @@ func _recalculate_stats() -> void:
 				player_atk += 3
 				player_def += 3
 		
-		# INSIGHT boon: +2 vision radius
+	# INSIGHT boon: +2 vision radius
 		if boon.type == BoonScript.Type.INSIGHT:
 			vision_bonus = 2
+	
+	# Apply affliction modifiers
+	for affliction in afflictions:
+		# SHADOWED affliction: -2 vision radius
+		if affliction.type == AfflictionScript.Type.SHADOWED:
+			vision_bonus -= 2
 	
 	# Cap HP if it decreased
 	if player_hp > player_max_hp:
