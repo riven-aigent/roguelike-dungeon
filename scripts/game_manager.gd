@@ -2135,6 +2135,7 @@ func _draw() -> void:
 				draw_circle(Vector2(ecx, ecy), float(TILE_SIZE) * 0.12, Color(1.0, 0.3, 0.0))
 
 		# Enemy HP bar (small bar above enemy)
+		# Enemy HP bar (small bar above enemy)
 		if enemy.hp < enemy.max_hp:
 			var bar_w: float = float(TILE_SIZE - 4)
 			# Boss gets wider bar
@@ -2143,7 +2144,7 @@ func _draw() -> void:
 			var bar_h: float = 3.0
 			if enemy.is_boss:
 				bar_h = 5.0
-		var bar_x: float = ex + 2.0
+			var bar_x: float = ex + 2.0
 			if enemy.is_boss:
 				bar_x = ecx - bar_w / 2.0
 			var bar_y: float = ey - 5.0
