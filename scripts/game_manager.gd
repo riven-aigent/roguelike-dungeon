@@ -2967,6 +2967,17 @@ func _player_attack(enemy: Enemy) -> void:
 				_spawn_floating_text(player_pos, "+1 HP", Color(0.7, 0.2, 0.3))
 				_add_log_message("Vampiric boon heals 1 HP!")
 			break
+	
+	# VAMPIRIC affliction: heal on kill
+	for affliction in afflictions:
+		if affliction.type == AfflictionScript.Type.VAMPIRIC:
+			var heal_amount: int = 1
+			var actual_heal: int = mini(heal_amount, player_max_hp - player_hp)
+			if actual_heal > 0:
+				player_hp += actual_heal
+				_spawn_floating_text(player_pos, "+1 HP", Color(0.6, 0.1, 0.2))
+				_add_log_message("Vampiric affliction heals 1 HP!")
+			break
 
 func _handle_enemy_drops(enemy: Enemy) -> void:
 	if enemy.guaranteed_drop >= 0:
