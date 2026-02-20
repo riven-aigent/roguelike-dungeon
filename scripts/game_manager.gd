@@ -20,6 +20,7 @@ var shop_items: Array = []
 var has_visited_shop_this_floor: bool = false
 const FOG_RADIUS := 6
 const FOG_RADIUS_SQ := FOG_RADIUS * FOG_RADIUS
+var vision_bonus: int = 0  # From INSIGHT boon
 
 var map_data: TileMapData
 var generator: DungeonGenerator
@@ -204,6 +205,7 @@ func _recalculate_stats() -> void:
 	player_def = base_def
 	player_max_hp = base_max_hp
 	crit_chance = 0.05  # Base 5%
+	vision_bonus = 0  # Reset vision bonus
 	
 	if equipped_weapon:
 		player_atk += equipped_weapon.atk_bonus
@@ -239,6 +241,10 @@ func _recalculate_stats() -> void:
 			if player_hp <= player_max_hp / 2:
 				player_atk += 3
 				player_def += 3
+		
+		# INSIGHT boon: +2 vision radius
+		if boon.type == BoonScript.Type.INSIGHT:
+			vision_bonus = 2
 	
 	# Cap HP if it decreased
 	if player_hp > player_max_hp:
@@ -742,9 +748,11 @@ func _update_visibility() -> void:
 	revealed.clear()
 	var px: int = player_pos.x
 	var py: int = player_pos.y
-	for dy in range(-FOG_RADIUS, FOG_RADIUS + 1):
-		for dx in range(-FOG_RADIUS, FOG_RADIUS + 1):
-			if dx * dx + dy * dy <= FOG_RADIUS_SQ:
+	var effective_radius: int = FOG_RADIUS + vision_bonus
+	var effective_radius_sq: int = effective_radius * effective_radius
+	for dy in range(-effective_radius, effective_radius + 1):
+		for dx in range(-effective_radius, effective_radius + 1):
+			if dx * dx + dy * dy <= effective_radius_sq:
 				var tx: int = px + dx
 				var ty: int = py + dy
 				if tx >= 0 and tx < map_data.width and ty >= 0 and ty < map_data.height:
