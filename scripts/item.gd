@@ -139,10 +139,11 @@ func setup(t: Type, position: Vector2i) -> void:
 			is_equipment = true
 			equipment_slot = EquipmentSlot.ACCESSORY
 			hp_bonus = 10
-		Type.BOOTS_SPEED:
+	Type.BOOTS_SPEED:
 			name_str = "Boots of Speed"
 			is_equipment = true
 			equipment_slot = EquipmentSlot.ACCESSORY
+			dodge_bonus = 0.1  # +10% dodge (speed = evasion)
 		Type.GREATSWORD:
 			name_str = "Greatsword"
 			is_equipment = true
@@ -255,7 +256,9 @@ func get_description() -> String:
 			desc += ("+" if def_bonus > 0 else "") + str(def_bonus) + " DEF "
 		if hp_bonus != 0:
 			desc += ("+" if hp_bonus > 0 else "") + str(hp_bonus) + " HP "
-		if crit_bonus > 0:
+	if crit_bonus > 0:
 			desc += "+" + str(int(crit_bonus * 100)) + "% Crit "
+		if dodge_bonus > 0:
+			desc += "+" + str(int(dodge_bonus * 100)) + "% Dodge "
 		return desc.strip_edges()
 	return ""

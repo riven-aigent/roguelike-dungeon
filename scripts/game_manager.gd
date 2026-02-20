@@ -216,10 +216,14 @@ func _recalculate_stats() -> void:
 		player_def += equipped_armor.def_bonus
 		player_max_hp += equipped_armor.hp_bonus
 	if equipped_accessory:
-		player_atk += equipped_accessory.atk_bonus
+	player_atk += equipped_accessory.atk_bonus
 		player_def += equipped_accessory.def_bonus
 		player_max_hp += equipped_accessory.hp_bonus
 		crit_chance += equipped_accessory.crit_bonus
+		# Add dodge bonus from accessories
+		if equipped_accessory.dodge_bonus > 0:
+			# Store for use in combat
+			pass  # Dodge is calculated dynamically in _enemy_attack
 	
 	# Apply affliction modifiers
 	for affliction in afflictions:
@@ -1325,12 +1329,16 @@ func _try_ranged_attack(enemy: Enemy) -> bool:
 func _enemy_attack(enemy: Enemy) -> void:
 	var dmg: int = maxi(1, enemy.atk - player_def)
 	
-	# Check for dodge from boons
+	# Check for dodge from boons and equipment
 	var total_dodge: float = 0.0
 	for boon in boons:
 		var mods: Dictionary = boon.get_stat_modifiers()
 		if mods.has("dodge_chance"):
 			total_dodge += mods["dodge_chance"]
+	
+	# Add dodge from equipped accessories
+	if equipped_accessory != null and equipped_accessory.dodge_bonus > 0:
+		total_dodge += equipped_accessory.dodge_bonus
 	
 	if randf() < total_dodge:
 		_spawn_floating_text(player_pos, "DODGE!", Color(0.5, 1.0, 0.8))
