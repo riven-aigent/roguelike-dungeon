@@ -762,6 +762,18 @@ func _get_curse_bonus() -> int:
 	return 0
 
 func _calculate_score() -> int:
+	return kill_count * 10 + gold_collected + current_floor * 5
+
+var game_won: bool = false
+
+func _victory() -> void:
+	game_won = true
+	game_over = true
+	var final_score: int = _calculate_score()
+	_add_log_message("=== VICTORY! ===")
+	_add_log_message("You escaped the Depths of Ruin!")
+	_add_log_message("Final Score: " + str(final_score))
+	_add_log_message("Floors: " + str(current_floor - 1) + " | Kills: " + str(kill_count) + " | Gold: " + str(gold_collected))
 
 
 # === D-PAD HELPERS ===
@@ -2270,8 +2282,12 @@ func _draw() -> void:
 		draw_rect(Rect2(0, 0, viewport_w, viewport_h), Color(0.0, 0.0, 0.0, 0.75))
 
 		var title: String = "YOU DIED"
+		var title_color: Color = Color(0.9, 0.15, 0.15)
+		if game_won:
+			title = "VICTORY!"
+			title_color = Color(0.2, 0.9, 0.3)
 		var title_w: float = float(title.length()) * 14.0
-		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - title_w / 2.0, float(viewport_h) / 2.0 - 80.0), title, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 28, Color(0.9, 0.15, 0.15))
+		draw_string(ThemeDB.fallback_font, Vector2(float(viewport_w) / 2.0 - title_w / 2.0, float(viewport_h) / 2.0 - 80.0), title, HORIZONTAL_ALIGNMENT_CENTER, viewport_w, 28, title_color)
 
 		var score_text: String = "Score: " + str(score)
 		var floor_text: String = "Reached Floor " + str(current_floor)
@@ -2582,8 +2598,12 @@ func _try_move(dir: Vector2i) -> void:
 						else:
 							door_blocked = true
 							_add_log_message("Door is locked! Need a key.")
-		if not door_blocked:
+	if not door_blocked:
 			current_floor += 1
+			# Win condition: floor 31 reached (after defeating Dragon on floor 30)
+			if current_floor > 30:
+				_victory()
+				return
 			_generate_floor()
 			return
 
