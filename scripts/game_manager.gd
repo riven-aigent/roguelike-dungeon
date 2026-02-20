@@ -2715,16 +2715,27 @@ func _check_item_pickup() -> void:
 					_spawn_floating_text(player_pos, "+1 DEF", Color(0.3, 0.6, 1.0))
 					_add_log_message("Picked up Shield Scroll! +1 DEF")
 					_recalculate_stats()
-			Item.Type.GOLD:
+		Item.Type.GOLD:
 					var gold_amount: int = 10
 					# LUCK boon: +10% gold
 					for boon in boons:
 						if boon.type == BoonScript.Type.LUCK:
 							gold_amount = int(gold_amount * 1.1)
 							break
-					gold_collected += gold_amount
-					_spawn_floating_text(player_pos, "+" + str(gold_amount) + "g", Color(1.0, 0.85, 0.1))
-					_add_log_message("Picked up Gold! +" + str(gold_amount) + " gold")
+					# TAINTED_GOLD affliction: 30% chance to lose gold instead
+					var tainted: bool = false
+					for affliction in afflictions:
+						if affliction.type == AfflictionScript.Type.TAINTED_GOLD:
+							if affliction.should_trigger_tainted_gold():
+								tainted = true
+								gold_collected = maxi(0, gold_collected - gold_amount)
+								_spawn_floating_text(player_pos, "-" + str(gold_amount) + "g", Color(0.5, 0.1, 0.1))
+								_add_log_message("Tainted gold! -" + str(gold_amount) + " gold!")
+							break
+					if not tainted:
+						gold_collected += gold_amount
+						_spawn_floating_text(player_pos, "+" + str(gold_amount) + "g", Color(1.0, 0.85, 0.1))
+						_add_log_message("Picked up Gold! +" + str(gold_amount) + " gold")
 				Item.Type.KEY:
 					keys += 1
 					_add_log_message("Picked up Dungeon Key!")
