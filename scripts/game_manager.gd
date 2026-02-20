@@ -2715,10 +2715,16 @@ func _check_item_pickup() -> void:
 					_spawn_floating_text(player_pos, "+1 DEF", Color(0.3, 0.6, 1.0))
 					_add_log_message("Picked up Shield Scroll! +1 DEF")
 					_recalculate_stats()
-				Item.Type.GOLD:
-					gold_collected += 10
-					_spawn_floating_text(player_pos, "+10g", Color(1.0, 0.85, 0.1))
-					_add_log_message("Picked up Gold! +10 gold")
+			Item.Type.GOLD:
+					var gold_amount: int = 10
+					# LUCK boon: +10% gold
+					for boon in boons:
+						if boon.type == BoonScript.Type.LUCK:
+							gold_amount = int(gold_amount * 1.1)
+							break
+					gold_collected += gold_amount
+					_spawn_floating_text(player_pos, "+" + str(gold_amount) + "g", Color(1.0, 0.85, 0.1))
+					_add_log_message("Picked up Gold! +" + str(gold_amount) + " gold")
 				Item.Type.KEY:
 					keys += 1
 					_add_log_message("Picked up Dungeon Key!")
