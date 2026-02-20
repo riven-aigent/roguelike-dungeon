@@ -233,6 +233,12 @@ func _recalculate_stats() -> void:
 		player_atk += mods["atk_mod"]
 		player_def += mods["def_mod"]
 		crit_chance += mods["crit_bonus"]
+		
+		# BERSERKER boon: +3 ATK, +3 DEF when below 50% HP
+		if boon.type == BoonScript.Type.BERSERKER:
+			if player_hp <= player_max_hp / 2:
+				player_atk += 3
+				player_def += 3
 	
 	# Cap HP if it decreased
 	if player_hp > player_max_hp:
