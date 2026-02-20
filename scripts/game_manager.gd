@@ -754,8 +754,14 @@ func _is_visible(pos: Vector2i) -> bool:
 func _is_explored(pos: Vector2i) -> bool:
 	return explored.has(pos)
 
+func _get_curse_bonus() -> int:
+	# Returns extra damage from CURSED affliction
+	for affliction in afflictions:
+		if affliction.type == Affliction.Type.CURSED:
+			return 2
+	return 0
+
 func _calculate_score() -> int:
-	return kill_count * 10 + gold_collected + current_floor * 5
 
 
 # === D-PAD HELPERS ===
@@ -2723,6 +2729,7 @@ func _apply_random_affliction() -> void:
 		available_afflictions.append(AfflictionScript.Type.VAMPIRIC)
 		available_afflictions.append(AfflictionScript.Type.BERSERKER)
 		available_afflictions.append(AfflictionScript.Type.GLASS_CANNON)
+		available_afflictions.append(AfflictionScript.Type.CURSED)
 	
 	if available_afflictions.is_empty():
 		available_afflictions.append(AfflictionScript.Type.FRAIL)  # Fallback
@@ -2886,18 +2893,18 @@ func _check_traps() -> void:
 func _trigger_trap(trap: Trap) -> void:
 	match trap.type:
 		Trap.Type.SPIKES:
-			var dmg: int = maxi(1, 3 - player_def)
+			var dmg: int = maxi(1, 3 - player_def + _get_curse_bonus())
 			player_hp -= dmg
 			damage_flash_timer = 0.3
 			_add_log_message("Spike trap! -" + str(dmg) + " HP")
 		Trap.Type.POISON_DART:
-			var dmg: int = maxi(1, 2 - player_def)
+			var dmg: int = maxi(1, 2 - player_def + _get_curse_bonus())
 			player_hp -= dmg
 			poison_turns = 5
 			damage_flash_timer = 0.3
 			_add_log_message("Poison dart! -" + str(dmg) + " HP, poisoned!")
 		Trap.Type.FIRE_VENT:
-			var dmg: int = maxi(1, 4 - player_def)
+			var dmg: int = maxi(1, 4 - player_def + _get_curse_bonus())
 			player_hp -= dmg
 			burn_turns = 3
 			damage_flash_timer = 0.3
@@ -2909,13 +2916,13 @@ func _trigger_trap(trap: Trap) -> void:
 			slow_turns = 4
 			_add_log_message("Ice patch! Slowed for 4 turns!")
 		Trap.Type.LAVA_CRACK:
-			var dmg: int = maxi(1, 5 - player_def)
+			var dmg: int = maxi(1, 5 - player_def + _get_curse_bonus())
 			player_hp -= dmg
 			burn_turns = 5
 			damage_flash_timer = 0.3
 			_add_log_message("Lava crack! -" + str(dmg) + " HP, burning for 5 turns!")
 		Trap.Type.SHADOW_PIT:
-			var dmg: int = maxi(1, 3 - player_def)
+			var dmg: int = maxi(1, 3 - player_def + _get_curse_bonus())
 			player_hp -= dmg
 			_teleport_random()
 			damage_flash_timer = 0.3
@@ -2925,7 +2932,7 @@ func _trigger_trap(trap: Trap) -> void:
 			player_xp -= xp_drain
 			_add_log_message("Spirit wisp! -" + str(xp_drain) + " XP drained!")
 		Trap.Type.BEAR_TRAP:
-			var dmg: int = maxi(1, 4 - player_def)
+			var dmg: int = maxi(1, 4 - player_def + _get_curse_bonus())
 			player_hp -= dmg
 			immobilized_turns = 2
 			damage_flash_timer = 0.3

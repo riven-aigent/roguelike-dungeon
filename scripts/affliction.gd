@@ -17,6 +17,7 @@ enum Type {
 	VAMPIRIC,     # Heal 1 HP per kill, but lose 1 HP per 20 turns
 	BERSERKER,    # +3 ATK, -5 Max HP
 	GLASS_CANNON, # +5 ATK, -10 Max HP, take double damage
+	CURSED,       # Traps deal +2 damage
 }
 
 var type: Type
@@ -75,6 +76,10 @@ func setup(t: Type) -> void:
 			name_str = "Glass Cannon"
 			description = "+5 ATK, -10 Max HP, 2x damage taken"
 			affliction_color = Color(0.9, 0.9, 0.9)
+		Type.CURSED:
+			name_str = "Cursed"
+			description = "Traps deal +2 damage"
+			affliction_color = Color(0.4, 0.2, 0.6)
 
 func get_stat_modifiers() -> Dictionary:
 	# Returns {max_hp_mod, atk_mod, def_mod, vision_mod, damage_mult}
