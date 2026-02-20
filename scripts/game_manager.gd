@@ -2652,10 +2652,24 @@ func _try_move(dir: Vector2i) -> void:
 	# Enemy turn after player moves
 	turn_count += 1
 	_process_afflictions()
+	_process_boons()
 	_enemy_turn()
 	_update_visibility()
 	_update_camera()
 	queue_redraw()
+
+func _process_boons() -> void:
+	# Process boon effects each turn
+	for boon in boons:
+		boon.turns_active += 1
+		
+		# REGENERATION: heal 1 HP every 20 turns
+		if boon.type == BoonScript.Type.REGENERATION:
+			if boon.turns_active % 20 == 0 and player_hp < player_max_hp:
+				player_hp = mini(player_max_hp, player_hp + 1)
+				_spawn_floating_text(player_pos, "+1 HP", Color(0.2, 1.0, 0.3))
+				_add_log_message("Regeneration heals you for 1 HP!")
+
 func _check_item_pickup() -> void:
 	for item in items:
 		if item.collected:
@@ -2916,6 +2930,17 @@ func _player_attack(enemy: Enemy) -> void:
 			player_hp += actual_heal
 			_spawn_floating_text(player_pos, "+" + str(actual_heal) + " HP", Color(0.8, 0.2, 0.3))
 			_add_log_message("Lifesteal: +" + str(actual_heal) + " HP")
+	
+	# VAMPIRIC boon: heal on kill
+	for boon in boons:
+		if boon.type == BoonScript.Type.VAMPIRIC:
+			var heal_amount: int = 1
+			var actual_heal: int = mini(heal_amount, player_max_hp - player_hp)
+			if actual_heal > 0:
+				player_hp += actual_heal
+				_spawn_floating_text(player_pos, "+1 HP", Color(0.7, 0.2, 0.3))
+				_add_log_message("Vampiric boon heals 1 HP!")
+			break
 
 func _handle_enemy_drops(enemy: Enemy) -> void:
 	if enemy.guaranteed_drop >= 0:
