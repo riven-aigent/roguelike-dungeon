@@ -67,6 +67,19 @@ Boss floors are single-room arenas. Defeat the boss to reveal stairs and claim a
 - **Burn**: 2 damage per turn for 3 turns (from Fire Imps, Dragon)
 - **Slow**: Movement slowed for 3 turns (from Spider webs)
 
+### Afflictions & Boons
+**Afflictions** (debuffs from Dark Tomes, Tainted Gems):
+- Frail: -2 Max HP | Weakness: -1 ATK | Clumsy: -1 DEF
+- Heavy: Slowed every 8 turns | Decay: 1 HP loss every 15 turns
+- Haunted: More ghosts spawn | Shadowed: -2 vision
+- Vampiric: Heal on kill, lose HP over time | Berserker: +3 ATK, -5 HP
+
+**Boons** (buffs from Ancient Shrines):
+- Vigor: +3 Max HP | Strength: +1 ATK | Fortitude: +1 DEF
+- Regeneration: Heal 1 HP every 20 turns | Luck: +10% gold, +5% crit
+- Insight: +2 vision | Iron Will: Immune to affliction effects
+- Phoenix: Revive once on death with 25% HP
+
 ### Traps
 | Trap | Effect |
 |------|--------|
