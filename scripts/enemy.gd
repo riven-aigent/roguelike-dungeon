@@ -1,7 +1,30 @@
 class_name Enemy
 
 const Item = preload("res://scripts/item.gd")
-enum Type { SLIME, BAT, SKELETON, ORC, WRAITH, FIRE_IMP, GOLEM, GHOST, SPIDER, MIMIC, BOSS_SLIME, BOSS_LICH, BOSS_DRAGON, VAMPIRE, TROLL, CRYSTAL_GOLEM, SHADOW, WISP, RAZOR_BEAST, NECROMANCER, DJINN }
+
+enum Type {
+	SLIME,
+	BAT,
+	SKELETON,
+	ORC,
+	WRAITH,
+	FIRE_IMP,
+	GOLEM,
+	GHOST,
+	SPIDER,
+	MIMIC,
+	BOSS_SLIME,
+	BOSS_LICH,
+	BOSS_DRAGON,
+	VAMPIRE,
+	TROLL,
+	CRYSTAL_GOLEM,
+	SHADOW,
+	WISP,
+	RAZOR_BEAST,
+	NECROMANCER,
+	DJINN
+}
 
 var pos: Vector2i
 var hp: int
@@ -15,7 +38,7 @@ var xp_value: int = 5
 
 # Special enemy state
 var move_cooldown: int = 0  # Golem: skip turns
-var summon_timer: int = 0   # Lich: summon counter
+var summon_timer: int = 0  # Lich: summon counter
 var actions_per_turn: int = 1  # Dragon: 2 actions
 var has_split: bool = false  # Giant Slime: split once at 50%
 var is_boss: bool = false
@@ -30,6 +53,7 @@ var can_resurrect: bool = false  # Necromancer: resurrect dead enemies
 # Loot drops
 var drop_chance: float = 0.0  # Chance to drop equipment
 var guaranteed_drop: int = -1  # Item type to always drop (-1 = none)
+
 
 func setup(t: Type, position: Vector2i) -> void:
 	pos = position
@@ -47,108 +71,193 @@ func setup(t: Type, position: Vector2i) -> void:
 	mimic_revealed = false
 	drop_chance = 0.0
 	guaranteed_drop = -1
-	
+
 	match t:
 		Type.SLIME:
-			hp = 3; max_hp = 3; atk = 1; def = 0
-			name_str = "Slime"; xp_value = 5
+			hp = 3
+			max_hp = 3
+			atk = 1
+			def = 0
+			name_str = "Slime"
+			xp_value = 5
 			drop_chance = 0.05
 		Type.BAT:
-			hp = 2; max_hp = 2; atk = 2; def = 0
-			name_str = "Bat"; xp_value = 8
+			hp = 2
+			max_hp = 2
+			atk = 2
+			def = 0
+			name_str = "Bat"
+			xp_value = 8
 			drop_chance = 0.05
 		Type.SKELETON:
-			hp = 5; max_hp = 5; atk = 2; def = 1
-			name_str = "Skeleton"; xp_value = 15
+			hp = 5
+			max_hp = 5
+			atk = 2
+			def = 1
+			name_str = "Skeleton"
+			xp_value = 15
 			drop_chance = 0.15
 		Type.ORC:
-			hp = 8; max_hp = 8; atk = 3; def = 2
-			name_str = "Orc"; xp_value = 25
+			hp = 8
+			max_hp = 8
+			atk = 3
+			def = 2
+			name_str = "Orc"
+			xp_value = 25
 			drop_chance = 0.2
 		Type.WRAITH:
-			hp = 4; max_hp = 4; atk = 3; def = 0
-			name_str = "Wraith"; xp_value = 20
+			hp = 4
+			max_hp = 4
+			atk = 3
+			def = 0
+			name_str = "Wraith"
+			xp_value = 20
 			phase_through_walls = true
 			drop_chance = 0.15
 		Type.FIRE_IMP:
-			hp = 3; max_hp = 3; atk = 4; def = 0
-			name_str = "Fire Imp"; xp_value = 22
+			hp = 3
+			max_hp = 3
+			atk = 4
+			def = 0
+			name_str = "Fire Imp"
+			xp_value = 22
 			ranged_attack = true
 			drop_chance = 0.1
 		Type.GOLEM:
-			hp = 15; max_hp = 15; atk = 2; def = 4
-			name_str = "Golem"; xp_value = 30
+			hp = 15
+			max_hp = 15
+			atk = 2
+			def = 4
+			name_str = "Golem"
+			xp_value = 30
 			move_cooldown = 0  # Moves every other turn
 			drop_chance = 0.3
 		Type.GHOST:
-			hp = 3; max_hp = 3; atk = 5; def = 0
-			name_str = "Ghost"; xp_value = 28
+			hp = 3
+			max_hp = 3
+			atk = 5
+			def = 0
+			name_str = "Ghost"
+			xp_value = 28
 			phase_through_walls = true
 			stealthed = true  # Invisible until adjacent
 			drop_chance = 0.2
 		Type.SPIDER:
-			hp = 4; max_hp = 4; atk = 2; def = 0
-			name_str = "Spider"; xp_value = 18
+			hp = 4
+			max_hp = 4
+			atk = 2
+			def = 0
+			name_str = "Spider"
+			xp_value = 18
 			web_attack = true  # Slows player
 			drop_chance = 0.1
 		Type.MIMIC:
-			hp = 12; max_hp = 12; atk = 4; def = 2
-			name_str = "Mimic"; xp_value = 35
+			hp = 12
+			max_hp = 12
+			atk = 4
+			def = 2
+			name_str = "Mimic"
+			xp_value = 35
 			mimic_revealed = false
 			drop_chance = 0.5  # High drop chance
 			guaranteed_drop = Item.Type.GOLD  # Always drops gold
 		Type.BOSS_SLIME:
-			hp = 25; max_hp = 25; atk = 4; def = 2
-			name_str = "Giant Slime"; xp_value = 80
+			hp = 25
+			max_hp = 25
+			atk = 4
+			def = 2
+			name_str = "Giant Slime"
+			xp_value = 80
 			is_boss = true
 		Type.BOSS_LICH:
-			hp = 30; max_hp = 30; atk = 5; def = 3
-			name_str = "Lich"; xp_value = 120
+			hp = 30
+			max_hp = 30
+			atk = 5
+			def = 3
+			name_str = "Lich"
+			xp_value = 120
 			is_boss = true
 			summon_timer = 0
 		Type.BOSS_DRAGON:
-			hp = 50; max_hp = 50; atk = 6; def = 4
-			name_str = "Shadow Dragon"; xp_value = 200
+			hp = 50
+			max_hp = 50
+			atk = 6
+			def = 4
+			name_str = "Shadow Dragon"
+			xp_value = 200
 			is_boss = true
 			actions_per_turn = 2
 		Type.VAMPIRE:
-			hp = 10; max_hp = 10; atk = 4; def = 1
-			name_str = "Vampire"; xp_value = 40
+			hp = 10
+			max_hp = 10
+			atk = 4
+			def = 1
+			name_str = "Vampire"
+			xp_value = 40
 			drop_chance = 0.25
 		Type.TROLL:
-			hp = 20; max_hp = 20; atk = 3; def = 2
-			name_str = "Troll"; xp_value = 45
+			hp = 20
+			max_hp = 20
+			atk = 3
+			def = 2
+			name_str = "Troll"
+			xp_value = 45
 			drop_chance = 0.2
 		Type.CRYSTAL_GOLEM:
-			hp = 18; max_hp = 18; atk = 2; def = 6
-			name_str = "Crystal Golem"; xp_value = 50
+			hp = 18
+			max_hp = 18
+			atk = 2
+			def = 6
+			name_str = "Crystal Golem"
+			xp_value = 50
 			move_cooldown = 0
 			drop_chance = 0.35
 		Type.SHADOW:
-			hp = 6; max_hp = 6; atk = 5; def = 0
-			name_str = "Shadow"; xp_value = 35
+			hp = 6
+			max_hp = 6
+			atk = 5
+			def = 0
+			name_str = "Shadow"
+			xp_value = 35
 			phase_through_walls = true
 			stealthed = true  # Invisible until adjacent or damaged
 			drop_chance = 0.15
 		Type.WISP:
-			hp = 5; max_hp = 5; atk = 3; def = 0
-			name_str = "Wisp"; xp_value = 25
+			hp = 5
+			max_hp = 5
+			atk = 3
+			def = 0
+			name_str = "Wisp"
+			xp_value = 25
 			ranged_attack = true
 			drop_chance = 0.2
 		Type.RAZOR_BEAST:
-			hp = 7; max_hp = 7; atk = 4; def = 1
-			name_str = "Razor Beast"; xp_value = 30
+			hp = 7
+			max_hp = 7
+			atk = 4
+			def = 1
+			name_str = "Razor Beast"
+			xp_value = 30
 			drop_chance = 0.25
 		Type.NECROMANCER:
-			hp = 12; max_hp = 12; atk = 3; def = 2
-			name_str = "Necromancer"; xp_value = 50
+			hp = 12
+			max_hp = 12
+			atk = 3
+			def = 2
+			name_str = "Necromancer"
+			xp_value = 50
 			can_resurrect = true
 			drop_chance = 0.3
 		Type.DJINN:
-			hp = 8; max_hp = 8; atk = 4; def = 1
-			name_str = "Shaytan Djinn"; xp_value = 40
+			hp = 8
+			max_hp = 8
+			atk = 4
+			def = 1
+			name_str = "Shaytan Djinn"
+			xp_value = 40
 			phase_through_walls = true  # Can phase through walls
 			drop_chance = 0.25
+
 
 func get_color() -> Color:
 	match type:
@@ -173,8 +282,7 @@ func get_color() -> Color:
 		Type.MIMIC:
 			if mimic_revealed:
 				return Color(0.7, 0.5, 0.2)  # Brown when revealed
-			else:
-				return Color(1.0, 0.85, 0.1)  # Looks like gold
+			return Color(1.0, 0.85, 0.1)  # Looks like gold
 		Type.BOSS_SLIME:
 			return Color(0.3, 0.85, 0.1)  # Large green
 		Type.BOSS_LICH:
@@ -199,6 +307,7 @@ func get_color() -> Color:
 			return Color(0.2, 0.1, 0.5, 0.8)  # Translucent dark blue (smokeless fire essence)
 	return Color.WHITE
 
+
 func take_damage(amount: int) -> int:
 	var dmg: int = maxi(1, amount - def)
 	hp -= dmg
@@ -215,6 +324,7 @@ func take_damage(amount: int) -> int:
 	if type == Type.SHADOW and stealthed:
 		stealthed = false
 	return dmg
+
 
 func is_visible_to_player() -> bool:
 	# Ghost is invisible until adjacent or damaged

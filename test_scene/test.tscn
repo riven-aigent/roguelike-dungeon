@@ -1,0 +1,1 @@
+[gd_scene load_steps=2 format=3 uid="uid://test"]\n\n[node name="TestNode" type="Node"]\nscript = ExtResource("res://test_item.gd")

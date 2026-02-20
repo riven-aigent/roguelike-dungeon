@@ -1,46 +1,45 @@
 class_name Item
 
-enum Type { 
-	HEALTH_POTION, 
-	STRENGTH_POTION, 
+enum Type {
+	HEALTH_POTION,
+	STRENGTH_POTION,
 	SHIELD_SCROLL,
 	GOLD,
 	REVIVAL_AMULET,
 	TELEPORT_SCROLL,
 	BLESSING_SCROLL,
-	KEY,           # Opens secret walls
-	BOMB,          # Destroys nearby walls
-	POISON_CURE,   # Cures poison status
+	KEY,  # Opens secret walls
+	BOMB,  # Destroys nearby walls
+	POISON_CURE,  # Cures poison status
 	# New consumables
-	FIRE_BOMB,     # Damages all enemies in 3x3 area
+	FIRE_BOMB,  # Damages all enemies in 3x3 area
 	FROST_SCROLL,  # Freezes all visible enemies for 3 turns
-	SHADOW_STEP,   # Teleport through walls to visible tile
+	SHADOW_STEP,  # Teleport through walls to visible tile
 	# Affliction items (dark tomes)
-	DARK_TOME,     # Applies a random affliction but gives 50 XP
-	TAINTED_GEM,   # Applies an affliction but reveals all enemies on floor
+	DARK_TOME,  # Applies a random affliction but gives 50 XP
+	TAINTED_GEM,  # Applies an affliction but reveals all enemies on floor
 	# Equipment
-	SWORD,         # +2 ATK
-	AXE,           # +3 ATK, -1 DEF
-	DAGGER,        # +1 ATK, +5% crit
-	SHIELD,        # +2 DEF
-	ARMOR,         # +3 DEF, -1 move speed (not implemented yet)
-	RING_POWER,    # +1 ATK, +1 DEF
-	AMULET_LIFE,   # +10 MAX HP
-	BOOTS_SPEED,   # +1 move speed (future)
-	RING_CRIT,     # +15% crit chance
+	SWORD,  # +2 ATK
+	AXE,  # +3 ATK, -1 DEF
+	DAGGER,  # +1 ATK, +5% crit
+	SHIELD,  # +2 DEF
+	ARMOR,  # +3 DEF, -1 move speed (not implemented yet)
+	RING_POWER,  # +1 ATK, +1 DEF
+	AMULET_LIFE,  # +10 MAX HP
+	BOOTS_SPEED,  # +1 move speed (future)
+	RING_CRIT,  # +15% crit chance
 	CLOAK_SHADOW,  # +20% dodge chance (future)
-	POTION_MANA,   # Restores mana (future magic system)
+	POTION_MANA,  # Restores mana (future magic system)
 	# New equipment
-	GREATSWORD,    # +4 ATK, -1 DEF
-	SPEAR,         # +2 ATK, +1 DEF, can attack 2 tiles
+	GREATSWORD,  # +4 ATK, -1 DEF
+	SPEAR,  # +2 ATK, +1 DEF, can attack 2 tiles
 	RING_VAMPIRE,  # +5% lifesteal
-	AMULET_FURY,   # +2 ATK, +10% crit
+	AMULET_FURY,  # +2 ATK, +10% crit
 	# Boon items (shrines)
-	ANCIENT_SHRINE,    # Grants a random boon
+	ANCIENT_SHRINE,  # Grants a random boon
 	PURIFYING_ELIXIR,  # Cures all afflictions
-	SACRED_FLAME,      # +2 ATK for current floor
+	SACRED_FLAME,  # +2 ATK for current floor
 	# New consumables
-	TELEPORT_SCROLL,   # Teleport to random safe location
 	# End of enum
 }
 
@@ -56,6 +55,8 @@ var atk_bonus: int = 0
 var def_bonus: int = 0
 var hp_bonus: int = 0
 var crit_bonus: float = 0.0
+var dodge_bonus: float = 0.0
+
 
 func setup(t: Type, position: Vector2i) -> void:
 	pos = position
@@ -67,7 +68,8 @@ func setup(t: Type, position: Vector2i) -> void:
 	def_bonus = 0
 	hp_bonus = 0
 	crit_bonus = 0.0
-	
+	dodge_bonus = 0.0
+
 	match t:
 		Type.HEALTH_POTION:
 			name_str = "Health Potion"
@@ -139,7 +141,7 @@ func setup(t: Type, position: Vector2i) -> void:
 			is_equipment = true
 			equipment_slot = EquipmentSlot.ACCESSORY
 			hp_bonus = 10
-	Type.BOOTS_SPEED:
+		Type.BOOTS_SPEED:
 			name_str = "Boots of Speed"
 			is_equipment = true
 			equipment_slot = EquipmentSlot.ACCESSORY
@@ -156,7 +158,7 @@ func setup(t: Type, position: Vector2i) -> void:
 			equipment_slot = EquipmentSlot.WEAPON
 			atk_bonus = 2
 			def_bonus = 1
-	Type.RING_VAMPIRE:
+		Type.RING_VAMPIRE:
 			name_str = "Ring of Vampirism"
 			is_equipment = true
 			equipment_slot = EquipmentSlot.ACCESSORY
@@ -171,7 +173,7 @@ func setup(t: Type, position: Vector2i) -> void:
 			is_equipment = true
 			equipment_slot = EquipmentSlot.ACCESSORY
 			crit_bonus = 0.15
-	Type.CLOAK_SHADOW:
+		Type.CLOAK_SHADOW:
 			name_str = "Cloak of Shadows"
 			is_equipment = true
 			equipment_slot = EquipmentSlot.ACCESSORY
@@ -183,6 +185,7 @@ func setup(t: Type, position: Vector2i) -> void:
 			name_str = "Purifying Elixir"
 		Type.SACRED_FLAME:
 			name_str = "Sacred Flame"
+
 
 func get_color() -> Color:
 	match type:
@@ -240,13 +243,14 @@ func get_color() -> Color:
 			return Color(0.6, 0.55, 0.5)  # Brown wooden shaft
 		Type.RING_VAMPIRE:
 			return Color(0.6, 0.1, 0.2)  # Dark red
-	Type.AMULET_FURY:
+		Type.AMULET_FURY:
 			return Color(0.9, 0.3, 0.2)  # Red-orange
 		Type.RING_CRIT:
 			return Color(0.9, 0.8, 0.2)  # Yellow-gold
 		Type.CLOAK_SHADOW:
 			return Color(0.2, 0.15, 0.3)  # Dark purple
 	return Color.WHITE
+
 
 func get_description() -> String:
 	if is_equipment:
@@ -257,7 +261,7 @@ func get_description() -> String:
 			desc += ("+" if def_bonus > 0 else "") + str(def_bonus) + " DEF "
 		if hp_bonus != 0:
 			desc += ("+" if hp_bonus > 0 else "") + str(hp_bonus) + " HP "
-	if crit_bonus > 0:
+		if crit_bonus > 0:
 			desc += "+" + str(int(crit_bonus * 100)) + "% Crit "
 		if dodge_bonus > 0:
 			desc += "+" + str(int(dodge_bonus * 100)) + "% Dodge "

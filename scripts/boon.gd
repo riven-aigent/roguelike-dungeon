@@ -2,23 +2,21 @@ class_name Boon
 
 enum Type {
 	# Minor boons (shrine drops)
-	VIGOR,        # +3 Max HP
-	STRENGTH,     # +1 ATK
-	FORTITUDE,    # +1 DEF
-	SWIFT,        # +10% dodge chance
-	
+	VIGOR,  # +3 Max HP
+	STRENGTH,  # +1 ATK
+	FORTITUDE,  # +1 DEF
+	SWIFT,  # +10% dodge chance
 	# Major boons (rare drops)
-	REGENERATION, # Heal 1 HP every 20 turns
-	VAMPIRIC,     # Heal 1 HP per kill (stacks with affliction)
-	LUCK,         # +10% gold find, +5% crit
-	INSIGHT,      # +2 vision radius
-	
+	REGENERATION,  # Heal 1 HP every 20 turns
+	VAMPIRIC,  # Heal 1 HP per kill (stacks with affliction)
+	LUCK,  # +10% gold find, +5% crit
+	INSIGHT,  # +2 vision radius
 	# Special boons (boss drops / rare)
-	IRON_WILL,    # Immune to affliction effects (not application)
-	BERSERKER,    # +3 ATK, +3 DEF when below 50% HP
-	PHOENIX,      # Revive once with 25% HP on death
+	IRON_WILL,  # Immune to affliction effects (not application)
+	BERSERKER,  # +3 ATK, +3 DEF when below 50% HP
+	PHOENIX,  # Revive once with 25% HP on death
 	SHADOW_WALK,  # 20% chance to dodge attacks
-	MIRROR_SHIELD # Reflect 25% of damage taken
+	MIRROR_SHIELD  # Reflect 25% of damage taken
 }
 
 var type: Type
@@ -27,10 +25,11 @@ var description: String
 var boon_color: Color
 var turns_active: int = 0
 
+
 func setup(t: Type) -> void:
 	type = t
 	turns_active = 0
-	
+
 	match t:
 		Type.VIGOR:
 			name_str = "Vigor"
@@ -85,6 +84,7 @@ func setup(t: Type) -> void:
 			description = "Reflect 25% damage taken"
 			boon_color = Color(0.7, 0.8, 0.9)
 
+
 func get_stat_modifiers() -> Dictionary:
 	var mods: Dictionary = {
 		"max_hp_mod": 0,
@@ -98,7 +98,7 @@ func get_stat_modifiers() -> Dictionary:
 		"affliction_immune": false,
 		"revive": false,
 	}
-	
+
 	match type:
 		Type.VIGOR:
 			mods["max_hp_mod"] = 3
@@ -123,8 +123,9 @@ func get_stat_modifiers() -> Dictionary:
 			mods["dodge_chance"] = 0.2
 		Type.MIRROR_SHIELD:
 			mods["reflect_damage"] = 0.25
-	
+
 	return mods
+
 
 func should_trigger_regen() -> int:
 	if type == Type.REGENERATION:
@@ -132,11 +133,13 @@ func should_trigger_regen() -> int:
 			return 1
 	return 0
 
+
 func get_berserker_bonus(current_hp: int, max_hp: int) -> Dictionary:
 	if type == Type.BERSERKER:
 		if float(current_hp) / float(max_hp) < 0.5:
 			return {"atk": 3, "def": 3}
 	return {"atk": 0, "def": 0}
+
 
 func increment_turn() -> void:
 	turns_active += 1

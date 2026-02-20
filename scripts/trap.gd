@@ -1,16 +1,16 @@
 class_name Trap
 
-enum Type { 
-	SPIKES,      # Deal damage when stepped on
-	POISON_DART, # Deal damage and poison (DOT)
-	FIRE_VENT,   # Periodic fire damage
-	TELEPORT,    # Random teleport when stepped on
+enum Type {
+	SPIKES,  # Deal damage when stepped on
+	POISON_DART,  # Deal damage and poison (DOT)
+	FIRE_VENT,  # Periodic fire damage
+	TELEPORT,  # Random teleport when stepped on
 	# New themed traps
-	ICE_PATCH,   # Slow effect
+	ICE_PATCH,  # Slow effect
 	LAVA_CRACK,  # Burn damage over time
 	SHADOW_PIT,  # Teleport to random position + damage
-	SPIRIT_WISP, # Drains XP (small amount)
-	BEAR_TRAP    # Immobilizes for 2 turns + damage
+	SPIRIT_WISP,  # Drains XP (small amount)
+	BEAR_TRAP  # Immobilizes for 2 turns + damage
 }
 
 var pos: Vector2i
@@ -19,6 +19,7 @@ var visible: bool = false
 var triggered: bool = false
 var cooldown: int = 0  # For fire vents
 var name_str: String
+
 
 func setup(t: Type, position: Vector2i) -> void:
 	pos = position
@@ -41,10 +42,11 @@ func setup(t: Type, position: Vector2i) -> void:
 			name_str = "Lava Crack"
 		Type.SHADOW_PIT:
 			name_str = "Shadow Pit"
-	Type.SPIRIT_WISP:
+		Type.SPIRIT_WISP:
 			name_str = "Spirit Wisp"
 		Type.BEAR_TRAP:
 			name_str = "Bear Trap"
+
 
 func get_color() -> Color:
 	match type:
@@ -62,16 +64,17 @@ func get_color() -> Color:
 			return Color(0.9, 0.2, 0.1)  # Bright red
 		Type.SHADOW_PIT:
 			return Color(0.2, 0.1, 0.3)  # Dark purple
-	Type.SPIRIT_WISP:
+		Type.SPIRIT_WISP:
 			return Color(0.7, 0.7, 0.9)  # Pale blue-white
 		Type.BEAR_TRAP:
 			return Color(0.5, 0.35, 0.2)  # Brown metal
 	return Color.WHITE
 
+
 # Returns true if trap should be consumed/destroyed after triggering
 func is_one_shot() -> bool:
 	match type:
-	Type.SPIKES, Type.POISON_DART:
+		Type.SPIKES, Type.POISON_DART:
 			return true
 		Type.FIRE_VENT, Type.TELEPORT, Type.ICE_PATCH, Type.LAVA_CRACK, Type.SHADOW_PIT:
 			return false

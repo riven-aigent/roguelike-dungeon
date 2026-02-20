@@ -9,12 +9,13 @@ enum Tile {
 	SHOP,
 	SECRET_WALL,  # Looks like wall but can be opened with key
 	SECRET_ROOM,  # Secret room floor
-	CURSED_VAULT, # High risk/reward room with elite enemies
+	CURSED_VAULT,  # High risk/reward room with elite enemies
 }
 
 var width: int
 var height: int
 var grid: Array  # Array of Arrays of int (Tile enum)
+
 
 func _init(w: int = 60, h: int = 60) -> void:
 	width = w
@@ -26,18 +27,30 @@ func _init(w: int = 60, h: int = 60) -> void:
 			row.append(Tile.WALL)
 		grid.append(row)
 
+
 func get_tile(x: int, y: int) -> int:
 	if x < 0 or x >= width or y < 0 or y >= height:
 		return Tile.WALL
 	return grid[y][x]
 
+
 func set_tile(x: int, y: int, tile: int) -> void:
 	if x >= 0 and x < width and y >= 0 and y < height:
 		grid[y][x] = tile
 
+
 func is_walkable(x: int, y: int) -> bool:
 	var t := get_tile(x, y)
-	return t == Tile.FLOOR or t == Tile.DOOR or t == Tile.STAIRS_DOWN or t == Tile.STAIRS_UP or t == Tile.SHOP or t == Tile.SECRET_ROOM or t == Tile.CURSED_VAULT
+	return (
+		t == Tile.FLOOR
+		or t == Tile.DOOR
+		or t == Tile.STAIRS_DOWN
+		or t == Tile.STAIRS_UP
+		or t == Tile.SHOP
+		or t == Tile.SECRET_ROOM
+		or t == Tile.CURSED_VAULT
+	)
+
 
 func get_random_floor_tile() -> Vector2i:
 	var floor_tiles: Array[Vector2i] = []

@@ -17,13 +17,14 @@ var permanent_upgrades: Dictionary = {
 # Shop unlockables
 var shop_unlocks: Dictionary = {
 	"health_potion": true,  # Always available
-	"strength_potion": true,  # Always available  
-	"shield_scroll": true,   # Always available
-	"gold_bag": true,        # Always available
-	"revival_amulet": false, # Unlocked at floor 10
-	"teleport_scroll": false, # Unlocked at floor 15
+	"strength_potion": true,  # Always available
+	"shield_scroll": true,  # Always available
+	"gold_bag": true,  # Always available
+	"revival_amulet": false,  # Unlocked at floor 10
+	"teleport_scroll": false,  # Unlocked at floor 15
 	"blessing_scroll": false  # Unlocked at floor 20
 }
+
 
 func save() -> void:
 	if OS.has_feature("web"):
@@ -37,7 +38,9 @@ func save() -> void:
 			"shop_unlocks": shop_unlocks.duplicate()
 		}
 		var json_str: String = JSON.stringify(save_data)
-		JavaScriptBridge.eval("localStorage.setItem('depths_of_ruin_save', '" + json_str.replace("'", "\\'") + "');")
+		JavaScriptBridge.eval(
+			"localStorage.setItem('depths_of_ruin_save', '" + json_str.replace("'", "\\'") + "');"
+		)
 	else:
 		# Desktop/mobile - use config file
 		var config: ConfigFile = ConfigFile.new()
@@ -45,14 +48,15 @@ func save() -> void:
 		config.set_value("progress", "total_kills", total_kills)
 		config.set_value("progress", "highest_floor_reached", highest_floor_reached)
 		config.set_value("progress", "games_played", games_played)
-		
+
 		for key in permanent_upgrades:
 			config.set_value("upgrades", key, permanent_upgrades[key])
-			
+
 		for key in shop_unlocks:
 			config.set_value("shop_unlocks", key, shop_unlocks[key])
-			
+
 		config.save("user://depths_of_ruin.cfg")
+
 
 func load() -> void:
 	if OS.has_feature("web"):
@@ -65,7 +69,7 @@ func load() -> void:
 				total_kills = save_data.get("total_kills", 0)
 				highest_floor_reached = save_data.get("highest_floor_reached", 1)
 				games_played = save_data.get("games_played", 0)
-				
+
 				if save_data.has("permanent_upgrades"):
 					permanent_upgrades = save_data["permanent_upgrades"]
 				if save_data.has("shop_unlocks"):
@@ -78,12 +82,13 @@ func load() -> void:
 			total_kills = config.get_value("progress", "total_kills", 0)
 			highest_floor_reached = config.get_value("progress", "highest_floor_reached", 1)
 			games_played = config.get_value("progress", "games_played", 0)
-			
+
 			for key in permanent_upgrades:
 				permanent_upgrades[key] = config.get_value("upgrades", key, 0)
-				
+
 			for key in shop_unlocks:
 				shop_unlocks[key] = config.get_value("shop_unlocks", key, false)
+
 
 # Check if we should unlock new shop items based on progress
 func check_shop_unlocks(floor_reached: int) -> void:
@@ -93,6 +98,7 @@ func check_shop_unlocks(floor_reached: int) -> void:
 		shop_unlocks["teleport_scroll"] = true
 	if floor_reached >= 20:
 		shop_unlocks["blessing_scroll"] = true
+
 
 # Update highest floor reached
 func update_highest_floor(floor: int) -> void:
