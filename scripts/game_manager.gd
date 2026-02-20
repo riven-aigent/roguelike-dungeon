@@ -1293,10 +1293,38 @@ func _try_ranged_attack(enemy: Enemy) -> bool:
 
 func _enemy_attack(enemy: Enemy) -> void:
 	var dmg: int = maxi(1, enemy.atk - player_def)
+	
+	# Check for dodge from boons
+	var total_dodge: float = 0.0
+	for boon in boons:
+		var mods: Dictionary = boon.get_stat_modifiers()
+		if mods.has("dodge_chance"):
+			total_dodge += mods["dodge_chance"]
+	
+	if randf() < total_dodge:
+		_spawn_floating_text(player_pos, "DODGE!", Color(0.5, 1.0, 0.8))
+		_add_log_message("You dodged " + enemy.name_str + "'s attack!")
+		return
+	
 	player_hp -= dmg
 	damage_flash_timer = 0.3
 	_spawn_floating_text(player_pos, "-" + str(dmg), Color(1.0, 0.2, 0.2))
 	_add_log_message(enemy.name_str + " hits you for " + str(dmg) + " damage!")
+	
+	# Check for damage reflection from boons
+	var total_reflect: float = 0.0
+	for boon in boons:
+		var mods: Dictionary = boon.get_stat_modifiers()
+		if mods.has("reflect_damage"):
+			total_reflect += mods["reflect_damage"]
+	
+	if total_reflect > 0.0:
+		var reflect_dmg: int = maxi(1, int(dmg * total_reflect))
+		enemy.take_damage(reflect_dmg)
+		_spawn_floating_text(enemy.pos, "-" + str(reflect_dmg), Color(0.7, 0.8, 0.9))
+		_add_log_message("Mirror Shield reflects " + str(reflect_dmg) + " damage!")
+		if not enemy.alive:
+			_on_enemy_killed(enemy)
 	
 	# Razor Beast applies bleed
 	if enemy.type == Enemy.Type.RAZOR_BEAST:
