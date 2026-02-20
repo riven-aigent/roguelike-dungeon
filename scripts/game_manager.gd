@@ -538,6 +538,10 @@ func _spawn_items() -> void:
 		base_items.append(Item.Type.RING_VAMPIRE)
 	if current_floor >= 16:
 		base_items.append(Item.Type.AMULET_FURY)
+	if current_floor >= 18:
+		base_items.append(Item.Type.RING_CRIT)
+	if current_floor >= 22:
+		base_items.append(Item.Type.CLOAK_SHADOW)
 	if current_floor >= 9:
 		base_items.append(Item.Type.FIRE_BOMB)
 	if current_floor >= 11:
@@ -713,9 +717,10 @@ func _spawn_cursed_vault_contents() -> void:
 				enemies.append(enemy)
 		
 		# Spawn guaranteed good loot
-		var loot_types: Array = [
+	var loot_types: Array = [
 			Item.Type.STRENGTH_POTION, Item.Type.SHIELD_SCROLL,
 			Item.Type.RING_POWER, Item.Type.AMULET_LIFE,
+			Item.Type.RING_CRIT, Item.Type.CLOAK_SHADOW,
 			Item.Type.GOLD, Item.Type.GOLD
 		]
 		var loot_pos: Vector2i = vault_pos + Vector2i(0, 1)

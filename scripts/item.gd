@@ -153,7 +153,7 @@ func setup(t: Type, position: Vector2i) -> void:
 			equipment_slot = EquipmentSlot.WEAPON
 			atk_bonus = 2
 			def_bonus = 1
-		Type.RING_VAMPIRE:
+	Type.RING_VAMPIRE:
 			name_str = "Ring of Vampirism"
 			is_equipment = true
 			equipment_slot = EquipmentSlot.ACCESSORY
@@ -163,6 +163,15 @@ func setup(t: Type, position: Vector2i) -> void:
 			equipment_slot = EquipmentSlot.ACCESSORY
 			atk_bonus = 2
 			crit_bonus = 0.1
+		Type.RING_CRIT:
+			name_str = "Ring of Critical"
+			is_equipment = true
+			equipment_slot = EquipmentSlot.ACCESSORY
+			crit_bonus = 0.15
+		Type.CLOAK_SHADOW:
+			name_str = "Cloak of Shadows"
+			is_equipment = true
+			equipment_slot = EquipmentSlot.ACCESSORY
 		# Boon items
 		Type.ANCIENT_SHRINE:
 			name_str = "Ancient Shrine"
@@ -227,8 +236,12 @@ func get_color() -> Color:
 			return Color(0.6, 0.55, 0.5)  # Brown wooden shaft
 		Type.RING_VAMPIRE:
 			return Color(0.6, 0.1, 0.2)  # Dark red
-		Type.AMULET_FURY:
+	Type.AMULET_FURY:
 			return Color(0.9, 0.3, 0.2)  # Red-orange
+		Type.RING_CRIT:
+			return Color(0.9, 0.8, 0.2)  # Yellow-gold
+		Type.CLOAK_SHADOW:
+			return Color(0.2, 0.15, 0.3)  # Dark purple
 	return Color.WHITE
 
 func get_description() -> String:
