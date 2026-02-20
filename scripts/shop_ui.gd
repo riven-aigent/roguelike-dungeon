@@ -39,6 +39,8 @@ func _update_display() -> void:
 		var item_button: Button = Button.new()
 		item_button.text = shop_item.name + " - " + str(shop_item.price) + "g"
 		item_button.tooltip_text = shop_item.description
+		item_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		item_button.custom_minimum_size = Vector2(200, 40)
 
 		# Disable if not enough gold
 		if current_gold < shop_item.price:
@@ -55,7 +57,8 @@ func _update_display() -> void:
 		desc_label.set("theme_override/font_size", 12)
 		desc_label.set("theme_override/font_color", Color(0.7, 0.7, 0.7))
 		desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-		desc_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		desc_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		desc_label.custom_minimum_size = Vector2(280, 0)
 		items_container.add_child(desc_label)
 
 		# Add some spacing
