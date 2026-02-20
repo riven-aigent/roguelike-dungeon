@@ -2683,11 +2683,15 @@ func _check_item_pickup() -> void:
 					_recalculate_stats()
 					_spawn_floating_text(player_pos, "PURIFIED!", Color(0.5, 0.9, 0.5))
 					_add_log_message("All afflictions cleansed!")
-				Item.Type.SACRED_FLAME:
+			Item.Type.SACRED_FLAME:
 					# Temporary ATK boost for current floor
 					player_atk += 2
 					_spawn_floating_text(player_pos, "+2 ATK!", Color(1.0, 0.6, 0.2))
 					_add_log_message("Sacred Flame empowers you! +2 ATK this floor!")
+				Item.Type.TELEPORT_SCROLL:
+					_teleport_random()
+					_spawn_floating_text(player_pos, "TELEPORT!", Color(0.7, 0.3, 0.9))
+					_add_log_message("Teleport Scroll! Warped to a new location!")
 			score = _calculate_score()
 			return
 

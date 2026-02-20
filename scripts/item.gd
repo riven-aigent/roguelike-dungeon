@@ -39,6 +39,8 @@ enum Type {
 	ANCIENT_SHRINE,    # Grants a random boon
 	PURIFYING_ELIXIR,  # Cures all afflictions
 	SACRED_FLAME,      # +2 ATK for current floor
+	# New consumables
+	TELEPORT_SCROLL,   # Teleport to random safe location
 	# End of enum
 }
 
