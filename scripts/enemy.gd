@@ -19,6 +19,7 @@ var summon_timer: int = 0   # Lich: summon counter
 var actions_per_turn: int = 1  # Dragon: 2 actions
 var has_split: bool = false  # Giant Slime: split once at 50%
 var is_boss: bool = false
+var is_elite: bool = false  # Elite: stronger variant with better drops
 var phase_through_walls: bool = false  # Wraith, Ghost
 var ranged_attack: bool = false  # Fire Imp
 var web_attack: bool = false  # Spider: slows player

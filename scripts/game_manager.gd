@@ -447,6 +447,15 @@ func _spawn_enemies() -> void:
 		var t: int = valid_types[randi() % valid_types.size()]
 		var enemy: Enemy = Enemy.new()
 		enemy.setup(t, pos)
+		# Elite chance increases with floor
+		if current_floor >= 5 and randf() < 0.1 + (current_floor * 0.01):
+			enemy.is_elite = true
+			enemy.hp = int(enemy.hp * 1.5)
+			enemy.max_hp = enemy.hp
+			enemy.atk += 2
+			enemy.def += 1
+			enemy.xp_value = int(enemy.xp_value * 2)
+			enemy.drop_chance += 0.2
 		enemies.append(enemy)
 		occupied[pos] = true
 
@@ -1934,7 +1943,7 @@ func _draw() -> void:
 			var bar_h: float = 3.0
 			if enemy.is_boss:
 				bar_h = 5.0
-			var bar_x: float = ex + 2.0
+		var bar_x: float = ex + 2.0
 			if enemy.is_boss:
 				bar_x = ecx - bar_w / 2.0
 			var bar_y: float = ey - 5.0
@@ -1946,6 +1955,9 @@ func _draw() -> void:
 			if enemy.is_boss:
 				# Boss name above HP bar
 				draw_string(ThemeDB.fallback_font, Vector2(bar_x, bar_y - 2.0), enemy.name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(1.0, 0.3, 0.3))
+			if enemy.is_elite:
+				# Elite indicator (gold star)
+				draw_string(ThemeDB.fallback_font, Vector2(bar_x + bar_w + 4, bar_y + bar_h), "★", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(1.0, 0.85, 0.0))
 	
 	# Draw traps (only if visible and triggered)
 	for trap in traps:
