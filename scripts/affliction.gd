@@ -1,19 +1,19 @@
-class_name Curse
+class_name Affliction
 
 enum Type {
-	# Minor curses (appear floor 5+)
+	# Minor afflictions (appear floor 5+)
 	FRAIL,        # -2 Max HP
 	WEAKNESS,     # -1 ATK
 	CLUMSY,       # -1 DEF
 	HEAVY,        # Slow effect every 8 turns
 	
-	# Major curses (appear floor 10+)
+	# Major afflictions (appear floor 10+)
 	DECAY,        # Lose 1 HP every 15 turns
 	HAUNTED,      # Ghosts spawn more frequently
 	SHADOWED,     # Reduced vision radius (-2)
-	CURSED_GOLD,  # Gold pickups have 30% chance to damage you for 2
+	TAINTED_GOLD, # Gold pickups have 30% chance to damage you for 2
 	
-	# Special curses (boss drops / rare)
+	# Special afflictions (boss drops / rare)
 	VAMPIRIC,     # Heal 1 HP per kill, but lose 1 HP per 20 turns
 	BERSERKER,    # +3 ATK, -5 Max HP
 	GLASS_CANNON, # +5 ATK, -10 Max HP, take double damage
@@ -22,7 +22,7 @@ enum Type {
 var type: Type
 var name_str: String
 var description: String
-var curse_color: Color
+var affliction_color: Color
 var is_permanent: bool = true
 var turns_active: int = 0  # For tracking timed effects
 
@@ -34,47 +34,47 @@ func setup(t: Type) -> void:
 		Type.FRAIL:
 			name_str = "Frail"
 			description = "-2 Max HP"
-			curse_color = Color(0.7, 0.3, 0.3)
+			affliction_color = Color(0.7, 0.3, 0.3)
 		Type.WEAKNESS:
 			name_str = "Weakness"
 			description = "-1 ATK"
-			curse_color = Color(0.6, 0.4, 0.3)
+			affliction_color = Color(0.6, 0.4, 0.3)
 		Type.CLUMSY:
 			name_str = "Clumsy"
 			description = "-1 DEF"
-			curse_color = Color(0.5, 0.5, 0.3)
+			affliction_color = Color(0.5, 0.5, 0.3)
 		Type.HEAVY:
 			name_str = "Heavy"
 			description = "Slowed every 8 turns"
-			curse_color = Color(0.4, 0.4, 0.5)
+			affliction_color = Color(0.4, 0.4, 0.5)
 		Type.DECAY:
 			name_str = "Decay"
 			description = "Lose 1 HP every 15 turns"
-			curse_color = Color(0.5, 0.2, 0.5)
+			affliction_color = Color(0.5, 0.2, 0.5)
 		Type.HAUNTED:
 			name_str = "Haunted"
 			description = "More ghosts spawn"
-			curse_color = Color(0.6, 0.6, 0.9, 0.7)
+			affliction_color = Color(0.6, 0.6, 0.9, 0.7)
 		Type.SHADOWED:
 			name_str = "Shadowed"
 			description = "-2 vision radius"
-			curse_color = Color(0.2, 0.2, 0.3)
-		Type.CURSED_GOLD:
-			name_str = "Cursed Gold"
+			affliction_color = Color(0.2, 0.2, 0.3)
+		Type.TAINTED_GOLD:
+			name_str = "Tainted Gold"
 			description = "30% chance gold damages you"
-			curse_color = Color(0.8, 0.7, 0.2)
+			affliction_color = Color(0.8, 0.7, 0.2)
 		Type.VAMPIRIC:
 			name_str = "Vampiric"
 			description = "Heal on kill, lose HP over time"
-			curse_color = Color(0.6, 0.1, 0.2)
+			affliction_color = Color(0.6, 0.1, 0.2)
 		Type.BERSERKER:
 			name_str = "Berserker"
 			description = "+3 ATK, -5 Max HP"
-			curse_color = Color(0.9, 0.3, 0.2)
+			affliction_color = Color(0.9, 0.3, 0.2)
 		Type.GLASS_CANNON:
 			name_str = "Glass Cannon"
 			description = "+5 ATK, -10 Max HP, 2x damage taken"
-			curse_color = Color(0.9, 0.9, 0.9)
+			affliction_color = Color(0.9, 0.9, 0.9)
 
 func get_stat_modifiers() -> Dictionary:
 	# Returns {max_hp_mod, atk_mod, def_mod, vision_mod, damage_mult}
@@ -123,8 +123,8 @@ func should_trigger_decay() -> int:
 			return 1
 	return 0
 
-func should_trigger_cursed_gold() -> bool:
-	if type == Type.CURSED_GOLD:
+func should_trigger_tainted_gold() -> bool:
+	if type == Type.TAINTED_GOLD:
 		return randf() < 0.3
 	return false
 

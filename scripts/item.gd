@@ -15,9 +15,9 @@ enum Type {
 	FIRE_BOMB,     # Damages all enemies in 3x3 area
 	FROST_SCROLL,  # Freezes all visible enemies for 3 turns
 	SHADOW_STEP,   # Teleport through walls to visible tile
-	# Cursed items
-	CURSED_TOME,   # Applies a random curse but gives 50 XP
-	CURSED_GEM,    # Applies a curse but reveals all enemies on floor
+	# Affliction items (dark tomes)
+	DARK_TOME,     # Applies a random affliction but gives 50 XP
+	TAINTED_GEM,   # Applies an affliction but reveals all enemies on floor
 	# Equipment
 	SWORD,         # +2 ATK
 	AXE,           # +3 ATK, -1 DEF
@@ -34,7 +34,12 @@ enum Type {
 	GREATSWORD,    # +4 ATK, -1 DEF
 	SPEAR,         # +2 ATK, +1 DEF, can attack 2 tiles
 	RING_VAMPIRE,  # +5% lifesteal
-	AMULET_FURY    # +2 ATK, +10% crit
+	AMULET_FURY,   # +2 ATK, +10% crit
+	# Boon items (shrines)
+	ANCIENT_SHRINE,    # Grants a random boon
+	PURIFYING_ELIXIR,  # Cures all afflictions
+	SACRED_FLAME,      # +2 ATK for current floor
+	# End of enum
 }
 
 enum EquipmentSlot { WEAPON, ARMOR, ACCESSORY }
@@ -88,11 +93,11 @@ func setup(t: Type, position: Vector2i) -> void:
 			name_str = "Frost Scroll"
 		Type.SHADOW_STEP:
 			name_str = "Shadow Step"
-		# Cursed items
-		Type.CURSED_TOME:
-			name_str = "Cursed Tome"
-		Type.CURSED_GEM:
-			name_str = "Cursed Gem"
+		# Affliction items
+		Type.DARK_TOME:
+			name_str = "Dark Tome"
+		Type.TAINTED_GEM:
+			name_str = "Tainted Gem"
 		# Equipment
 		Type.SWORD:
 			name_str = "Iron Sword"
@@ -158,6 +163,13 @@ func setup(t: Type, position: Vector2i) -> void:
 			equipment_slot = EquipmentSlot.ACCESSORY
 			atk_bonus = 2
 			crit_bonus = 0.1
+		# Boon items
+		Type.ANCIENT_SHRINE:
+			name_str = "Ancient Shrine"
+		Type.PURIFYING_ELIXIR:
+			name_str = "Purifying Elixir"
+		Type.SACRED_FLAME:
+			name_str = "Sacred Flame"
 
 func get_color() -> Color:
 	match type:
@@ -187,10 +199,10 @@ func get_color() -> Color:
 			return Color(0.5, 0.8, 1.0)  # Ice blue
 		Type.SHADOW_STEP:
 			return Color(0.3, 0.2, 0.5)  # Dark purple
-		# Cursed items
-		Type.CURSED_TOME:
+		# Affliction items
+		Type.DARK_TOME:
 			return Color(0.4, 0.1, 0.5)  # Dark purple
-		Type.CURSED_GEM:
+		Type.TAINTED_GEM:
 			return Color(0.5, 0.1, 0.3)  # Dark red-purple
 		# Equipment colors
 		Type.SWORD:
