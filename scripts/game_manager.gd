@@ -188,10 +188,13 @@ func _ready() -> void:
 	# Initialize shop system
 	shop_system = ShopSystem.new()
 	shop_system.initialize(persistent_data)
-	# Create shop UI instance
+	# Create shop UI instance - add to canvas layer for proper UI rendering
 	var shop_ui_scene = preload("res://scenes/shop.tscn")
 	shop_ui = shop_ui_scene.instantiate()
-	add_child(shop_ui)
+	var canvas_layer: CanvasLayer = CanvasLayer.new()
+	canvas_layer.layer = 10  # Render on top
+	add_child(canvas_layer)
+	canvas_layer.add_child(shop_ui)
 	shop_ui.hide()
 
 	# Connect shop signals
