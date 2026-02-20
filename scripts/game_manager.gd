@@ -244,7 +244,13 @@ func _is_shop_floor_num(floor_num: int) -> bool:
 	return not _is_boss_floor_num(floor_num)
 
 func _apply_floor_theme() -> void:
-	# Cycle through themes every 5 floors
+	# Cycle through themes every 5 floors, SHADOW for floors 26+
+	if current_floor >= 26:
+		current_theme = FloorTheme.SHADOW
+		color_wall = Color(0.08, 0.05, 0.12)
+		color_floor = Color(0.05, 0.03, 0.08)
+		color_bg = Color(0.01, 0.0, 0.02)
+		return
 	var theme_index: int = (current_floor / 5) % 5
 	match theme_index:
 		0:  # Floors 1-5, 26-30, etc.
@@ -617,9 +623,12 @@ func _spawn_traps() -> void:
 			FloorTheme.VOLCANIC:
 				trap_types.append(Trap.Type.LAVA_CRACK)
 				trap_types.append(Trap.Type.FIRE_VENT)
-			FloorTheme.ICE:
+		FloorTheme.ICE:
 				trap_types.append(Trap.Type.ICE_PATCH)
-		# Generic traps for all themes
+			FloorTheme.SHADOW:
+				trap_types.append(Trap.Type.SHADOW_PIT)
+				if current_floor >= 28:
+					trap_types.append(Trap.Type.TELEPORT)
 		if current_floor >= 8:
 			trap_types.append(Trap.Type.TELEPORT)
 		if current_floor >= 12:
