@@ -77,6 +77,10 @@ var keys: int = 0
 # Traps
 var traps: Array = []  # Array of Trap
 
+# Lanterns for lighting
+var lanterns: Array = []  # Array of Vector2i positions
+const LANTERN_LIGHT_RADIUS := 4
+
 # Enemies
 var enemies: Array = []  # Array of Enemy
 
@@ -116,6 +120,9 @@ var boss_stairs_pos: Vector2i = Vector2i(-1, -1)
 var touch_start: Vector2 = Vector2.ZERO
 var is_touching: bool = false
 const SWIPE_THRESHOLD := 30.0
+
+# Detect if running on mobile/touch device
+var is_mobile: bool = false
 
 # D-pad touch controls
 const DPAD_BTN_SIZE := 56.0
@@ -168,6 +175,12 @@ var minimap_scale: float = 2.0
 
 
 func _ready() -> void:
+	# Detect if running on mobile device
+	is_mobile = OS.has_feature("web_android") or OS.has_feature("web_ios") or OS.has_feature("android") or OS.has_feature("ios")
+	
+	# Initialize persistent data
+	persistent_data = PersistentData.new()
+	persistent_data.load()
 	# Initialize persistent data
 	persistent_data = PersistentData.new()
 	persistent_data.load()
@@ -373,6 +386,7 @@ func _generate_floor() -> void:
 	in_shop = false
 	has_visited_shop_this_floor = false
 	traps.clear()
+	lanterns.clear()
 	poison_turns = 0
 	burn_turns = 0
 	slow_turns = 0
@@ -381,6 +395,21 @@ func _generate_floor() -> void:
 	_apply_floor_theme()
 
 	if is_boss_floor:
+		map_data = generator.generate_boss_floor()
+		player_pos = generator.get_boss_player_start()
+		revealed.clear()
+		explored.clear()
+		stairs_found.clear()
+		_spawn_boss()
+		items.clear()
+		# Add lanterns to boss floor (corners)
+		lanterns.clear()
+		lanterns.append(Vector2i(4, 4))
+		lanterns.append(Vector2i(19, 4))
+		lanterns.append(Vector2i(4, 19))
+		lanterns.append(Vector2i(19, 19))
+		_update_visibility()
+		_update_camera()
 		map_data = generator.generate_boss_floor()
 		player_pos = generator.get_boss_player_start()
 		revealed.clear()
@@ -408,6 +437,19 @@ func _generate_floor() -> void:
 		_add_log_message("Floor " + str(current_floor) + " - Press S near gold tile for shop!")
 	else:
 		map_data = generator.generate(60, 60, false)
+		player_pos = map_data.get_random_floor_tile()
+		revealed.clear()
+		explored.clear()
+		stairs_found.clear()
+		_spawn_enemies()
+		_spawn_items()
+		_spawn_traps()
+		_spawn_lanterns()
+		_spawn_secret_room_items()
+		_spawn_cursed_vault_contents()
+		_update_visibility()
+		_update_camera()
+		_add_log_message("Floor " + str(current_floor))
 		player_pos = map_data.get_random_floor_tile()
 		revealed.clear()
 		explored.clear()
@@ -716,6 +758,21 @@ func _spawn_traps() -> void:
 		traps.append(trap)
 
 
+
+
+func _spawn_lanterns() -> void:
+	lanterns.clear()
+	# Place lanterns in rooms (1-2 per room)
+	for room in generator.rooms:
+		if randf() < 0.6:  # 60% chance per room
+			var lx: int = room.position.x + 1 + randi() % maxi(room.size.x - 2, 1)
+			var ly: int = room.position.y + 1 + randi() % maxi(room.size.y - 2, 1)
+			var lantern_pos: Vector2i = Vector2i(lx, ly)
+			# Make sure it's on a floor tile
+			if map_data.get_tile(lx, ly) == TileMapData.Tile.FLOOR:
+				lanterns.append(lantern_pos)
+
+
 func _spawn_secret_room_items() -> void:
 	# Spawn bonus items in secret rooms
 	var secret_positions: Array[Vector2i] = generator.get_secret_room_positions()
@@ -832,6 +889,28 @@ func _is_visible(pos: Vector2i) -> bool:
 	return revealed.has(pos)
 
 
+func _is_near_lantern(pos: Vector2i) -> bool:
+	for lantern in lanterns:
+		var dist_sq: int = (pos.x - lantern.x) * (pos.x - lantern.x) + (pos.y - lantern.y) * (pos.y - lantern.y)
+		if dist_sq <= LANTERN_LIGHT_RADIUS * LANTERN_LIGHT_RADIUS:
+			return true
+	return false
+
+
+func _get_lantern_brightness(pos: Vector2i) -> float:
+	# Returns 0.0-1.0 brightness based on distance to nearest lantern
+	var max_brightness: float = 0.0
+	for lantern in lanterns:
+		var dist: float = sqrt(float((pos.x - lantern.x) * (pos.x - lantern.x) + (pos.y - lantern.y) * (pos.y - lantern.y)))
+		if dist <= float(LANTERN_LIGHT_RADIUS):
+			var brightness: float = 1.0 - (dist / float(LANTERN_LIGHT_RADIUS))
+			max_brightness = max(max_brightness, brightness)
+	return max_brightness
+
+
+	return max_brightness
+
+
 func _is_explored(pos: Vector2i) -> bool:
 	return explored.has(pos)
 
@@ -921,12 +1000,38 @@ func _process(delta: float) -> void:
 	if floating_texts.size() > 0:
 		_update_floating_texts(delta)
 		needs_redraw = true
-		# D-pad hold repeat
-		damage_flash_timer -= delta
-		if damage_flash_timer <= 0:
-			damage_flash_timer = 0.0
-		needs_redraw = true
-	# D-pad hold repeat
+	
+	# Keyboard hold movement (PC only)
+	if not is_mobile and not game_over and not in_inventory and not in_stats:
+		var keyboard_dir: Vector2i = Vector2i.ZERO
+		if Input.is_action_pressed("move_up"):
+			keyboard_dir = Vector2i(0, -1)
+		elif Input.is_action_pressed("move_down"):
+			keyboard_dir = Vector2i(0, 1)
+		elif Input.is_action_pressed("move_left"):
+			keyboard_dir = Vector2i(-1, 0)
+		elif Input.is_action_pressed("move_right"):
+			keyboard_dir = Vector2i(1, 0)
+		
+		if keyboard_dir != Vector2i.ZERO:
+			dpad_repeat_timer += delta
+			if not dpad_repeat_started:
+				if dpad_repeat_timer >= DPAD_REPEAT_DELAY:
+					dpad_repeat_started = true
+					dpad_repeat_timer = 0.0
+					_try_move(keyboard_dir)
+					needs_redraw = true
+			else:
+				if dpad_repeat_timer >= DPAD_REPEAT_RATE:
+					dpad_repeat_timer = 0.0
+					_try_move(keyboard_dir)
+					needs_redraw = true
+		else:
+			# Reset when no key held
+			dpad_repeat_timer = 0.0
+			dpad_repeat_started = false
+	
+	# D-pad hold repeat (mobile)
 	if dpad_pressed_dir != Vector2i.ZERO and not game_over:
 		dpad_repeat_timer += delta
 		if not dpad_repeat_started:
@@ -1732,11 +1837,36 @@ func _draw() -> void:
 				tile_color = color_floor
 
 			if not visible:
+				# Apply dim lighting, but brighten if near a lantern
+				var lantern_brightness: float = _get_lantern_brightness(tpos)
+				var dim_factor: float = color_dim + lantern_brightness * 0.5
+				dim_factor = clampf(dim_factor, color_dim, 1.0)
 				tile_color = Color(
-					tile_color.r * color_dim, tile_color.g * color_dim, tile_color.b * color_dim
+					tile_color.r * dim_factor, tile_color.g * dim_factor, tile_color.b * dim_factor
 				)
 
 			draw_rect(rect, tile_color)
+
+	# Draw lanterns (always visible if explored)
+	for lantern in lanterns:
+		if not _is_explored(lantern):
+			continue
+		var lx: float = float(lantern.x * TILE_SIZE) + camera_offset.x
+		var ly: float = float(lantern.y * TILE_SIZE) + camera_offset.y
+		var lcx: float = lx + float(TILE_SIZE) / 2.0
+		var lcy: float = ly + float(TILE_SIZE) / 2.0
+		
+		# Lantern glow (light circle)
+		var glow_radius: float = float(TILE_SIZE) * 0.4
+		var glow_color: Color = Color(1.0, 0.85, 0.4, 0.3)
+		draw_circle(Vector2(lcx, lcy), glow_radius, glow_color)
+		
+		# Lantern body (small rectangle)
+		var lantern_rect: Rect2 = Rect2(lcx - 4, lcy - 6, 8, 12)
+		draw_rect(lantern_rect, Color(0.6, 0.4, 0.2))
+		# Lantern flame
+		draw_circle(Vector2(lcx, lcy - 4), 3, Color(1.0, 0.8, 0.3))
+		draw_circle(Vector2(lcx, lcy - 5), 2, Color(1.0, 0.95, 0.6))
 
 	# Draw items (only if visible, not collected)
 	for item in items:
@@ -2773,7 +2903,9 @@ func _draw() -> void:
 			lu_color
 		)
 
-	# === D-PAD ===
+	# === D-PAD (mobile only) ===
+	if is_mobile:
+		_draw_dpad()
 	_draw_dpad()
 
 	# Boss floor warning
