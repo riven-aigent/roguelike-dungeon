@@ -171,10 +171,11 @@ func setup(t: Type, position: Vector2i) -> void:
 			is_equipment = true
 			equipment_slot = EquipmentSlot.ACCESSORY
 			crit_bonus = 0.15
-		Type.CLOAK_SHADOW:
+	Type.CLOAK_SHADOW:
 			name_str = "Cloak of Shadows"
 			is_equipment = true
 			equipment_slot = EquipmentSlot.ACCESSORY
+			dodge_bonus = 0.15  # +15% dodge (shadow cloak = evasion)
 		# Boon items
 		Type.ANCIENT_SHRINE:
 			name_str = "Ancient Shrine"
