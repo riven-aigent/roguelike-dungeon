@@ -513,10 +513,10 @@ func _get_types_for_floor(floor_num: int) -> Array:
 
 func _spawn_enemies() -> void:
 	enemies.clear()
-	var count: int = 3 + (randi() % 4)  # 3-6 enemies
+	var count: int = 5 + (randi() % 6)  # 5-10 enemies
 	# Scale count with floor
-	count += current_floor / 3
-	count = mini(count, 10)
+	count += current_floor / 2
+	count = mini(count, 15)
 	var valid_types: Array = _get_types_for_floor(current_floor)
 	if valid_types.is_empty():
 		return
@@ -1669,9 +1669,19 @@ func _enemy_attack(enemy: Enemy) -> void:
 			_check_level_up()
 			score = _calculate_score()
 			_handle_enemy_drops(enemy)
+			# Check if all enemies cleared - guarantee key drop
+			var alive_count = 0
+			for e in enemies:
+				if e.alive:
+					alive_count += 1
+			if alive_count == 0 and not _is_shop_floor_num(current_floor):
+				keys += 1
+				_spawn_floating_text(player_pos, "+1 KEY (CLEAR!)", Color(1.0, 0.8, 0.2))
+				_add_log_message("Floor cleared! Gained a key!")
 			if enemy.is_boss:
 				_on_boss_defeated()
 
+	# Razor Beast applies bleed
 	# Razor Beast applies bleed
 	if enemy.type == Enemy.Type.RAZOR_BEAST:
 		bleed_stacks += 2
