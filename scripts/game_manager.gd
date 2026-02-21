@@ -2912,6 +2912,20 @@ func _draw() -> void:
 	xp_ratio = clampf(xp_ratio, 0.0, 1.0)
 	draw_rect(Rect2(bar_start_x, xp_bar_y, bar_w, 10.0), Color(0.1, 0.1, 0.2))
 	draw_rect(Rect2(bar_start_x, xp_bar_y, bar_w * xp_ratio, 10.0), Color(0.3, 0.5, 1.0))
+	
+	# Keys display
+	var keys_text: String = "Keys: " + str(keys)
+	draw_string(
+		ThemeDB.fallback_font,
+		Vector2(10, 68),
+		keys_text,
+		HORIZONTAL_ALIGNMENT_LEFT,
+		-1,
+		12,
+		Color(1.0, 0.8, 0.2)  # Gold color for keys
+	)
+
+	# === AFFLICTIONS DISPLAY ===
 
 	# === AFFLICTIONS DISPLAY ===
 	if afflictions.size() > 0:
