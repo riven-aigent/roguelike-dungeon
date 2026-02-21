@@ -1735,11 +1735,10 @@ func _show_shop() -> void:
 	if not _is_shop_floor_num(current_floor):
 		return
 
-	if has_visited_shop_this_floor:
-		_add_log_message("You've already visited the shop this floor.")
-		return
+	if in_shop:
+		return  # Already in shop
 
-	has_visited_shop_this_floor = true
+	in_shop = true
 
 	# Calculate total gold available (collected + persistent)
 	var total_gold: int = gold_collected + persistent_data.total_gold_earned
@@ -1791,6 +1790,7 @@ func _on_shop_item_purchased(item_type: int) -> void:
 
 
 func _on_shop_closed() -> void:
+	in_shop = false  # Allow reopening shop
 	# Save any gold spent to persistent data
 	# The shop UI handles gold deduction, so we need to sync with persistent data
 	var current_total_gold: int = shop_ui.current_gold
