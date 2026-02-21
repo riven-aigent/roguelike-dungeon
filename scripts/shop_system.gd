@@ -9,8 +9,15 @@ enum ShopItemType {
 	GOLD_BAG,
 	REVIVAL_AMULET,
 	TELEPORT_SCROLL,
-	BLESSING_SCROLL
+	BLESSING_SCROLL,
+	WEAPON_SHARPEN,    # New: +1 weapon damage
+	ARMOR_PATCH,       # New: +1 armor
+	SPEED_ELIXIR,      # New: +move speed (cosmetic for now)
+	LUCK_CHARM,        # New: +drop chance
+	XP_TOME,           # New: instant XP
+	KEY_RING           # New: +1 key
 }
+
 
 
 # Shop item data structure
@@ -52,6 +59,15 @@ func _setup_shop_items() -> void:
 		ShopItem.new(ShopItemType.SHIELD_SCROLL, "Shield Scroll", "+1 Defense permanently", 40)
 	)
 	available_items.append(ShopItem.new(ShopItemType.GOLD_BAG, "Gold Bag", "Gain 20 gold", 15))
+	
+	# New items
+	available_items.append(ShopItem.new(ShopItemType.WEAPON_SHARPEN, "Weapon Sharpen", "+1 Weapon Damage", 50))
+	available_items.append(ShopItem.new(ShopItemType.ARMOR_PATCH, "Armor Patch", "+1 Armor", 50))
+	available_items.append(ShopItem.new(ShopItemType.LUCK_CHARM, "Luck Charm", "+10% Drop Rate", 35))
+	available_items.append(ShopItem.new(ShopItemType.XP_TOME, "XP Tome", "Gain 25 XP", 30))
+	available_items.append(ShopItem.new(ShopItemType.KEY_RING, "Key Ring", "+1 Key", 45))
+
+	# Unlockable items
 
 	# Unlockable items
 	if persistent_data.shop_unlocks.get("revival_amulet", false):

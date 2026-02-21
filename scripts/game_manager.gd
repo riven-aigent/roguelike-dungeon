@@ -37,6 +37,7 @@ var player_hp: int = 20
 var player_max_hp: int = 20
 var player_atk: int = 3
 var player_def: int = 1
+var player_luck: float = 0.0  # Bonus drop chance
 var kill_count: int = 0
 
 # Base stats (before equipment)
@@ -1789,6 +1790,32 @@ func _on_shop_item_purchased(item_type: int) -> void:
 			_teleport_to_stairs()
 
 		ShopSystem.ShopItemType.BLESSING_SCROLL:
+			player_xp += 50
+			_add_log_message("Used Blessing Scroll! +50 XP")
+			_check_level_up()
+		
+		ShopSystem.ShopItemType.WEAPON_SHARPEN:
+			player_atk += 1
+			_add_log_message("Weapon sharpened! +1 Attack")
+		
+		ShopSystem.ShopItemType.ARMOR_PATCH:
+			player_def += 1
+			_add_log_message("Armor patched! +1 Defense")
+		
+		ShopSystem.ShopItemType.LUCK_CHARM:
+			player_luck += 0.1  # 10% better drops
+			_add_log_message("Luck Charm! +10% Drop Rate")
+		
+		ShopSystem.ShopItemType.XP_TOME:
+			player_xp += 25
+			_add_log_message("Read XP Tome! +25 XP")
+			_check_level_up()
+		
+		ShopSystem.ShopItemType.KEY_RING:
+			keys += 1
+			_add_log_message("Key Ring! +1 Key")
+
+	# Update score and redraw
 			player_xp += 50
 			_add_log_message("Used Blessing Scroll! +50 XP")
 			_check_level_up()
