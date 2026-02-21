@@ -1682,7 +1682,6 @@ func _enemy_attack(enemy: Enemy) -> void:
 				_on_boss_defeated()
 
 	# Razor Beast applies bleed
-	# Razor Beast applies bleed
 	if enemy.type == Enemy.Type.RAZOR_BEAST:
 		bleed_stacks += 2
 		_add_log_message("You're bleeding! (+" + str(2) + " stacks)")
