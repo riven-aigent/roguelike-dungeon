@@ -1916,9 +1916,10 @@ func _draw() -> void:
 			if tile == TileMapData.Tile.FLOOR and visible:
 				_draw_floor_detail(tpos, rect)
 
-	# Draw lanterns (always visible if explored)
+	# Draw lanterns (visible if in current view or previously explored)
 	for lantern in lanterns:
-		if not _is_explored(lantern):
+		if not _is_visible(lantern) and not _is_explored(lantern):
+			continue
 			continue
 		var lx: float = float(lantern.x * TILE_SIZE) + camera_offset.x
 		var ly: float = float(lantern.y * TILE_SIZE) + camera_offset.y
