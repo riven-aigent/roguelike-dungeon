@@ -1131,9 +1131,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.is_pressed():
 		var key_event: InputEventKey = event as InputEventKey
 		if (
-			key_event.keycode == KEY_S
+			key_event.keycode == KEY_F
 			and _is_shop_floor_num(current_floor)
-			and not has_visited_shop_this_floor
+			and not in_shop
 		):
 			_show_shop()
 			return
