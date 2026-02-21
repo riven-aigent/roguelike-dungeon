@@ -765,14 +765,15 @@ func _spawn_traps() -> void:
 
 func _spawn_lanterns() -> void:
 	lanterns.clear()
-	# Place lanterns in rooms (1-2 per room)
+	# Place lanterns in rooms (2-3 per room for better visibility)
 	for room in generator.rooms:
-		if randf() < 0.6:  # 60% chance per room
+		var lantern_count: int = 2 + randi() % 2  # 2-3 lanterns per room
+		for i in range(lantern_count):
 			var lx: int = room.position.x + 1 + randi() % maxi(room.size.x - 2, 1)
 			var ly: int = room.position.y + 1 + randi() % maxi(room.size.y - 2, 1)
 			var lantern_pos: Vector2i = Vector2i(lx, ly)
-			# Make sure it's on a floor tile
-			if map_data.get_tile(lx, ly) == TileMapData.Tile.FLOOR:
+			# Make sure it's on a floor tile and not already a lantern
+			if map_data.get_tile(lx, ly) == TileMapData.Tile.FLOOR and not lantern_pos in lanterns:
 				lanterns.append(lantern_pos)
 
 
@@ -890,6 +891,67 @@ func _update_visibility() -> void:
 
 func _is_visible(pos: Vector2i) -> bool:
 	return revealed.has(pos)
+
+
+func _draw_floor_detail(tpos: Vector2i, rect: Rect2) -> void:
+	# Add texture detail based on floor theme
+	var seed_val: int = tpos.x * 1000 + tpos.y  # Consistent pattern per tile
+	seed(seed_val)
+	
+	var detail_color: Color
+	var cx: float = rect.position.x + rect.size.x / 2.0
+	var cy: float = rect.position.y + rect.size.y / 2.0
+	
+	match current_theme:
+		FloorTheme.DUNGEON:  # Stone cobblestone
+			detail_color = Color(0.15, 0.15, 0.17)
+			# Draw stone pattern
+			for i in range(3):
+				var px: float = rect.position.x + randf() * rect.size.x
+				var py: float = rect.position.y + randf() * rect.size.y
+				var ps: float = 2.0 + randf() * 3.0
+				draw_rect(Rect2(px, py, ps, ps), detail_color)
+		FloorTheme.CAVE:  # Dirt/earth
+			detail_color = Color(0.12, 0.1, 0.08)
+			# Draw dirt specks
+			for i in range(4):
+				var px: float = rect.position.x + randf() * rect.size.x
+				var py: float = rect.position.y + randf() * rect.size.y
+				draw_rect(Rect2(px, py, 2.0, 2.0), detail_color)
+		FloorTheme.CRYPT:  # Wood planks / old wood
+			detail_color = Color(0.12, 0.1, 0.05)
+			# Draw wood grain lines
+			draw_line(
+				Vector2(rect.position.x, cy - 2.0),
+				Vector2(rect.position.x + rect.size.x, cy - 2.0),
+				detail_color, 1.0
+			)
+			draw_line(
+				Vector2(rect.position.x, cy + 2.0),
+				Vector2(rect.position.x + rect.size.x, cy + 2.0),
+				detail_color, 1.0
+			)
+		FloorTheme.VOLCANIC:  # Cracked stone
+			detail_color = Color(0.15, 0.05, 0.03)
+			# Draw crack lines
+			draw_line(
+				Vector2(cx, rect.position.y),
+				Vector2(cx + 3.0, cy),
+				detail_color, 1.0
+			)
+		FloorTheme.ICE:  # Wet stone / ice
+			detail_color = Color(0.1, 0.15, 0.2)
+			# Draw ice crystal effects
+			if randf() < 0.3:
+				draw_circle(Vector2(cx, cy), 2.0, detail_color)
+		FloorTheme.SHADOW:  # Dark void
+			detail_color = Color(0.02, 0.01, 0.03)
+			# Draw shadow wisps
+			if randf() < 0.2:
+				draw_rect(Rect2(cx - 2.0, cy - 2.0, 4.0, 4.0), detail_color)
+	
+	seed(randi())  # Reset random seed
+
 
 
 func _is_near_lantern(pos: Vector2i) -> bool:
@@ -1849,6 +1911,10 @@ func _draw() -> void:
 				)
 
 			draw_rect(rect, tile_color)
+			
+			# Add floor texture detail
+			if tile == TileMapData.Tile.FLOOR and visible:
+				_draw_floor_detail(tpos, rect)
 
 	# Draw lanterns (always visible if explored)
 	for lantern in lanterns:
